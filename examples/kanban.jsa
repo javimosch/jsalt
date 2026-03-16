@@ -1,12 +1,12 @@
-// Kanban Board - JSA
-// Features: each loops, localStorage, add/move/delete cards
+// Kanban Board - JSA v5
+// Features: each loops, localStorage, on mount, add/move/delete cards
 
 let todo = ["Design UI", "Write Tests"]
 let doing = ["Build API"]
 let done = []
 
 fn save = "localStorage.setItem('kanban', JSON.stringify({todo: getState('todo'), doing: getState('doing'), done: getState('done')}))"
-fn loadData = "const s = localStorage.getItem('kanban'); if(s) { const d = JSON.parse(s); setState('todo', d.todo||[]); setState('doing', d.doing||[]); setState('done', d.done||[]); }"
+on mount = "const s = localStorage.getItem('kanban'); if(s) { const d = JSON.parse(s); setState('todo', d.todo||[]); setState('doing', d.doing||[]); setState('done', d.done||[]); }"
 
 fn addTodo = "const t = refs.t1.value; if(!t) return; setState('todo', [...getState('todo'), t]); refs.t1.value = ''; save()"
 fn addDoing = "const t = refs.t2.value; if(!t) return; setState('doing', [...getState('doing'), t]); refs.t2.value = ''; save()"
