@@ -18,6 +18,7 @@ export class JSA {
     this._styleEl = null;
     this._updatePending = false;
     this._preUpdateState = null;
+    this._transitioned = new WeakSet();
   }
 
   render(template) {
@@ -34,6 +35,7 @@ export class JSA {
     this.watchers = {};
     this.hooks = { mount: [], destroy: [] };
     this._scopeId = null;
+    this._transitioned = new WeakSet();
 
     const lines = template.split('\n').filter(l => l.trim() && !l.trim().startsWith('//'));
     const parsed = this.parse(lines, 0);
@@ -273,11 +275,11 @@ export class JSA {
     if (bindM) { n.bind = bindM[1]; r = r.replace(bindM[0], '').trim(); }
 
     const htmlM = r.match(/\bhtml\s*=\s*"([^"]*)"/);
-    if (htmlM) { n.html = htmlM[1]; r = r.replace(htmlM[0], '').trim(); }
+    if (htmlM) { n.html = this.decodeUnicode(htmlM[1]); r = r.replace(htmlM[0], '').trim(); }
 
     const attrRe = /:([a-zA-Z][\w-]*)\s*=\s*"([^"]+)"/g;
     let am;
-    while ((am = attrRe.exec(r)) !== null) n.attrs[am[1]] = am[2];
+    while ((am = attrRe.exec(r)) !== null) n.attrs[am[1]] = this.decodeUnicode(am[2]);
     r = r.replace(/:[a-zA-Z][\w-]*\s*=\s*"[^"]+"/g, '').trim();
 
     const er = /@(\w+(?:\.\w+)*)\s*=\s*"([^"]+)"/g;
@@ -286,14 +288,21 @@ export class JSA {
     r = r.replace(/@\w+(?:\.\w+)*\s*=\s*"[^"]+"/g, '').trim();
 
     const cm = r.match(/^=\s*"([^"]*)"/);
-    if (cm) n.content = cm[1];
+    if (cm) n.content = this.decodeUnicode(cm[1]);
 
     return n;
   }
 
   parseValue(v) {
     v = v.trim();
-    if (v.startsWith('"') || v.startsWith("'")) return v.slice(1, -1);
+    if (v.startsWith('"') || v.startsWith("'")) {
+      let raw = v.slice(1, -1);
+      // Decode Unicode escape sequences (\uXXXX)
+      raw = raw.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+      // Decode other escape sequences
+      raw = raw.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+      return raw;
+    }
     if (v === 'true') return true;
     if (v === 'false') return false;
     if (v === 'null') return null;
@@ -378,7 +387,7 @@ export class JSA {
     if (n.html !== null) el.innerHTML = this.interpolate(n.html, ctx);
     else if (n.content !== null) el.textContent = this.interpolate(n.content, ctx);
 
-    const keyMap = { enter: 'Enter', esc: 'Escape', tab: 'Tab', space: ' ', delete: 'Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+    const keyMap = { enter: 'Enter', esc: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
     for (const [evName, h] of Object.entries(n.events)) {
       const loopCtx = { ...ctx };
       const parts = evName.split('.');
@@ -397,8 +406,10 @@ export class JSA {
     if (n.children) this.build(n.children, el, ctx);
     parent.appendChild(el);
 
-    if (n.transition) {
+    // Transitions - only on initial render, not on rebuilds
+    if (n.transition && !this._transitioned.has(el)) {
       const name = n.transition;
+      this._transitioned.add(el);
       el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -407,8 +418,11 @@ export class JSA {
           const done = () => {
             el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
             el.removeEventListener('transitionend', done);
+            clearTimeout(timeoutId);
           };
           el.addEventListener('transitionend', done);
+          // Timeout fallback in case transitionend never fires
+          const timeoutId = setTimeout(done, 1000);
         });
       });
     }
@@ -427,6 +441,11 @@ export class JSA {
     return this.interpolate(val, ctx);
   }
 
+  decodeUnicode(s) {
+    return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+            .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+  }
+
   interpolate(s, ctx) {
     return s.replace(/\$\{([^}]+)\}/g, (_, expr) => {
       try {
@@ -435,7 +454,8 @@ export class JSA {
           try { scope[k] = new Function('s', `with(s){return ${e}}`)(scope); } catch (ex) {}
         }
         const result = new Function('scope', `with(scope){return ${expr}}`)(scope);
-        return result !== undefined && result !== null ? result : '';
+        const str = result !== undefined && result !== null ? String(result) : '';
+        return this.decodeUnicode(str);
       } catch (e) { return ''; }
     });
   }
