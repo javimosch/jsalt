@@ -9,7 +9,7 @@ JSALT/JSA (JS Alternative) is a component-based reactive framework where **HTML 
 
 | Metric | Value |
 |--------|-------|
-| Runtime size | ~230 lines / ~7KB |
+| Runtime size | ~280 lines / ~8KB |
 | Counter app | 15 lines |
 | Files needed | 1 (`.jsa`) |
 | Bundle required | No |
@@ -40,56 +40,40 @@ Copy `jsa-runtime.js` to your project:
 
 ---
 
-## Project Structure
-
-```
-project/
-├── jsa-runtime.js   # Framework runtime
-├── app.jsa          # Your component
-└── index.html       # App shell
-```
-
-### NPM Package Structure
-```
-jsa-framework/
-├── jsa-runtime.js   # Published to npm
-├── README.md        # Published to npm
-├── examples/        # NOT published (demo apps)
-└── .agents/         # NOT published (skill docs)
-```
-
----
-
 ## Core Concepts
 
 ### 1. Reactive State
 ```jsa
 let count = 0
+let items = []
+let name = "World"
 ```
-Creates a reactive variable. When changed, UI updates automatically.
+Creates reactive variables. Arrays/objects supported via JSON.
 
 ### 2. Computed Values
 ```jsa
 const doubled = computed(() => count * 2)
+const valid = computed(() => name.length > 0 && email.includes('@'))
 ```
 Auto-updates when dependencies change.
 
 ### 3. Functions
 ```jsa
 fn inc = "setState('count', getState('count') + 1)"
-fn dec = "setState('count', getState('count') - 1)"
+fn save = "localStorage.setItem('data', JSON.stringify(getState('items')))"
+fn add = "setState('items', [...getState('items'), 'new']); save()"
 ```
-Reusable handlers defined inline.
+Reusable handlers. Functions can call other functions.
 
 ### 4. Elements
 ```jsa
 div#id.class { style: value } @event = "handler" = "content"
 ```
 - `#id` — element ID
-- `.class` — CSS class
-- `{ style: value }` — inline styles
+- `.class` — CSS class (`.a.b` for multiple)
+- `{ style: value }` — inline styles (semicolon-separated)
 - `@event = "handler"` — event listener
-- `= "content"` — text content
+- `= "content"` — text content with `${interpolation}`
 
 ### 5. DOM References
 ```jsa
@@ -100,59 +84,146 @@ Access via `refs.myInput` in handlers.
 ### 6. Interpolation
 ```jsa
 div = "Count: ${count}, Doubled: ${doubled}"
+div = "${items.length === 0 ? 'Empty' : items.length + ' items'}"
 ```
-State values auto-update in content.
+Expressions inside `${}` are evaluated with full state access.
 
-### 7. List Rendering (each loops)
+### 7. List Rendering — `each`
 ```jsa
-let items = [{ id: 1, text: "A" }, { id: 2, text: "B" }]
+let items = [{id: 1, text: "A"}, {id: 2, text: "B"}]
 fn remove = "setState('items', getState('items').filter(i => i.id !== item.id))"
 
-div.item { padding: 8px } each = "${items}"
-  span = "${item.text}"
+div.item each = "${items}"
+  span = "${idx + 1}. ${item.text}"
   button @click = "remove()" = "×"
 ```
-- `each = "${array}"` — iterate over array, repeats element + children per item
-- `item` — current item in loop (available in interpolation and handlers)
-- `idx` — current index (available in interpolation and handlers)
+- `each = "${array}"` — iterate over array
+- `item` — current item in loop
+- `idx` — current index in loop
 
-### 8. Functions Can Call Other Functions
+### 8. Conditional Rendering — `if` / `show`
 ```jsa
-fn save = "localStorage.setItem('data', JSON.stringify(getState('items')))"
-fn add = "setState('items', [...getState('items'), 'new']); save()"
+let loggedIn = false
+
+div.welcome if = "${loggedIn}" = "Welcome back!"
+div.login if = "${!loggedIn}" = "Please sign in"
+
+div.panel show = "${expanded}" = "Details here"
 ```
-All `fn` definitions are available as callable functions inside any handler.
+- `if = "${expr}"` — removes element from DOM when falsy
+- `show = "${expr}"` — hides element with `display:none` when falsy
+- No `else` keyword — use `if = "${!expr}"` (explicit, agent-friendly)
+
+### 9. Two-Way Binding — `bind`
+```jsa
+let name = ""
+let agree = false
+
+input :type = "text" bind = "name"
+input :type = "checkbox" bind = "agree"
+select bind = "color"
+textarea bind = "notes"
+```
+- `bind = "stateKey"` — syncs input value with state
+- Text/email/etc → updates on `input` event
+- Checkbox/radio → updates on `change` event, uses `.checked`
+- Select → updates on `change` event
+- Cursor position preserved on re-render
+
+### 10. Dynamic Attributes — `:attr`
+```jsa
+button :disabled = "${!valid}" = "Submit"
+img :src = "${imageUrl}" :alt = "${title}"
+input :type = "${showPw ? 'text' : 'password'}"
+div :class = "${active ? 'tab active' : 'tab'}"
+a :href = "${link}" :target = "_blank" = "Open"
+```
+- `:attr = "value"` — set attribute dynamically
+- `${expr}` — evaluated as expression (boolean attrs toggled)
+- Literal strings without `${}` passed as-is
+- Boolean attrs (`disabled`, `checked`, `hidden`, `readonly`, `required`): removed when falsy
+
+### 11. Watchers — `watch`
+```jsa
+let items = []
+watch items = "localStorage.setItem('items', JSON.stringify(getState('items')))"
+
+let search = ""
+watch search = "fetch('/api?q=' + getState('search')).then(r => r.json()).then(d => setState('results', d))"
+```
+- `watch key = "code"` — runs when state key changes
+- Runs after DOM rebuild (in microtask)
+- Has full handler context (setState, getState, refs, etc.)
+- Uses deep comparison for arrays/objects
+
+### 12. Lifecycle Hooks — `on mount` / `on destroy`
+```jsa
+let data = []
+on mount = "fetch('/api').then(r => r.json()).then(d => setState('data', d))"
+on mount = "console.log('Component ready, refs:', Object.keys(refs))"
+on destroy = "console.log('Cleaning up')"
+```
+- `on mount = "code"` — runs after initial render (DOM ready, refs available)
+- `on destroy = "code"` — runs when component is replaced/destroyed
+- Multiple hooks of same type allowed
+- Mount hooks run via `setTimeout(0)` so DOM is painted
+
+### 13. Scoped CSS — `style`
+```jsa
+style
+  .card { background: white; border-radius: 8px; padding: 16px }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15) }
+  button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer }
+  button:disabled { opacity: 0.4; cursor: not-allowed }
+  @media (max-width: 768px) { .card { padding: 8px } }
+```
+Or inline: `style = ".card { background: white } button { cursor: pointer }"`
+- CSS automatically scoped to component via `data-jsa-*` attribute
+- Supports pseudo-selectors (`:hover`, `:focus`, `:disabled`)
+- Supports `@media` queries
+- Indented block form recommended (no quote escaping needed)
 
 ---
 
 ## Handler API
 
-Inside `@click`, `@submit`, etc.:
+Inside `@event`, `fn`, `watch`, and `on` handlers:
 
 | Function | Description | Example |
 |----------|-------------|---------|
 | `setState(key, val)` | Update state + re-render | `setState('count', 5)` |
 | `getState(key)` | Get current value | `getState('count')` |
 | `refs.name` | DOM element reference | `refs.input.value` |
-| `el` | Current element | `el.style.color` |
+| `el` | Current element | `el.style.color = 'red'` |
+| `e` | Event object | `e.preventDefault()` |
 | `update()` | Force re-render | `update()` |
 | `item` | Current item in `each` loop | `item.text` |
 | `idx` | Current index in `each` loop | `idx` |
 
 ---
 
+## Element Parse Order
+
+```
+$ref → tag#id.class → { styles } → if → show → each → bind → :attrs → @events → = "content"
+```
+
+All directives can coexist on one line:
+```jsa
+$ref input.field { padding: 8px } if = "${editing}" :type = "text" :placeholder = "Name" bind = "name" @keydown = "if(e.key==='Enter') save()" = "default"
+```
+
+---
+
 ## Complete Examples
 
-### Counter App (15 lines)
-
+### Counter (15 lines)
 ```jsa
-// counter.jsa
-
 let count = 0
 const doubled = computed(() => count * 2)
-fn inc = "setState('count', getState('count') + 1)"
 fn dec = "setState('count', getState('count') - 1)"
 fn rst = "setState('count', 0)"
+fn inc = "setState('count', getState('count') + 1)"
 
 div#counter { display: flex; flex-direction: column; align-items: center; gap: 20px }
   h1 = "JSA Counter"
@@ -163,99 +234,78 @@ div#counter { display: flex; flex-direction: column; align-items: center; gap: 2
     button @click = "inc()" = "+"
 ```
 
-### Todo List (16 lines)
-
+### Todo List with Bind (14 lines)
 ```jsa
-// store.jsa
-
 let items = []
-fn add = "const t = refs.inp.value; if(!t) return; setState('items', [...getState('items'), {id: Date.now(), text: t}]); refs.inp.value = ''"
+let newText = ""
+fn add = "const t = getState('newText'); if(!t) return; setState('items', [...getState('items'), {id: Date.now(), text: t}]); setState('newText', '')"
 fn remove = "setState('items', getState('items').filter(i => i.id !== item.id))"
 
-div#todo { max-width: 500px; margin: 0 auto; padding: 30px; background: white; border-radius: 16px }
-  h2 = "JSA Todo Store"
-  div.input { display: flex; gap: 10px; margin-bottom: 20px }
-    $inp input { flex: 1; padding: 12px; border: 2px solid #eee; border-radius: 8px }
+div#todo { max-width: 500px; margin: 0 auto; padding: 30px }
+  h2 = "JSA Todo"
+  div.input { display: flex; gap: 10px }
+    input :placeholder = "Add a todo..." bind = "newText"
     button @click = "add()" = "Add"
-  div.list { min-height: 100px; border-top: 2px solid #eee; padding-top: 10px }
-    div.item { display: flex; justify-content: space-between; padding: 10px; margin: 6px 0; background: #f9fafb; border-radius: 6px } each = "${items}"
+  div.list
+    div.item each = "${items}"
       span = "${item.text}"
       button @click = "remove()" = "×"
-    p.empty { color: #999; text-align: center } = "${items.length === 0 ? 'No items — add one!' : ''}"
+    p if = "${items.length === 0}" = "No items — add one!"
 ```
 
-### Composable Pattern (15 lines)
-
+### Form with Validation (v5 showcase)
 ```jsa
-// composable.jsa
+let name = ""
+let email = ""
+let agree = false
+let submitted = false
+const valid = computed(() => name.length > 0 && email.includes('@') && agree)
 
-let count = 0
-const doubled = computed(() => count * 2)
-fn dec = "setState('count', getState('count') - 1)"
-fn rst = "setState('count', 0)"
-fn inc = "setState('count', getState('count') + 1)"
+on mount = "console.log('Form ready')"
+watch submitted = "if(getState('submitted')) setTimeout(() => setState('submitted', false), 3000)"
 
-div#counter { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 24px; background: white; border-radius: 16px }
-  h1 = "Composable-style Counter"
-  div.display { font-size: 32px; font-weight: bold; color: #3b82f6; padding: 20px } = "${count} (x2: ${doubled})"
-  div.buttons { display: flex; gap: 12px }
-    button @click = "dec()" = "−"
-    button @click = "rst()" = "Reset"
-    button @click = "inc()" = "+"
+style
+  .form { max-width: 420px; margin: 40px auto; padding: 32px; background: white; border-radius: 16px }
+  .field { margin-bottom: 16px }
+  .field label { display: block; margin-bottom: 6px; font-weight: 600 }
+  .field input { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px }
+  button:disabled { opacity: 0.4; cursor: not-allowed }
+
+div.form
+  h2 = "Contact Form"
+  div.success show = "${submitted}" = "✓ Submitted!"
+  div if = "${!submitted}"
+    div.field
+      label = "Name"
+      input :type = "text" bind = "name"
+    div.field
+      label = "Email"
+      input :type = "email" bind = "email"
+    div.check { display: flex; gap: 8px }
+      input :type = "checkbox" bind = "agree"
+      span = "I agree"
+    button :disabled = "${!valid}" @click = "setState('submitted', true)" = "Submit"
 ```
 
-### Calculator (50 lines)
-
+### Kanban Board (with on mount)
 ```jsa
-// calculator.jsa
-// Demonstrates: multiple state, operations, grid layout
-
-let display = "0"
-let prev = ""
-let op = ""
-let newNum = true
-
-fn clear = "setState('display', '0'); setState('prev', ''); setState('op', ''); setState('newNum', true)"
-fn input = "const d = '1'; if(getState('newNum')) { setState('display', d); setState('newNum', false); } else { setState('display', getState('display') + d); }"
-fn operate = "const o = '+'; setState('prev', getState('display')); setState('op', o); setState('newNum', true)"
-fn equals = "const a = parseFloat(getState('prev')); const b = parseFloat(getState('display')); setState('display', (a + b).toString()); setState('prev', ''); setState('op', '')"
-
-div#calculator { width: 300px; margin: 40px auto }
-  div.screen { background: #333; padding: 20px; text-align: right }
-    div.history = "${prev} ${op}"
-    div.current { font-size: 48px } = "${display}"
-  div.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px }
-    button @click = "clear()" = "AC"
-    button @click = "input()" = "1"
-    button @click = "input()" = "2"
-    button @click = "operate()" = "+"
-    button @click = "equals()" = "="
-```
-
-### Kanban Board (~50 lines)
-
-```jsa
-// kanban.jsa
-// Demonstrates: each loops, localStorage, fn chaining, array state
-
-let todo = ["Design UI", "Write Tests"]
+let todo = ["Design UI"]
 let doing = ["Build API"]
 let done = []
 
 fn save = "localStorage.setItem('kanban', JSON.stringify({todo: getState('todo'), doing: getState('doing'), done: getState('done')}))"
+on mount = "const s = localStorage.getItem('kanban'); if(s) { const d = JSON.parse(s); setState('todo', d.todo||[]); setState('doing', d.doing||[]); setState('done', d.done||[]); }"
 fn addTodo = "const t = refs.t1.value; if(!t) return; setState('todo', [...getState('todo'), t]); refs.t1.value = ''; save()"
 
-div#kanban { background: #1a1a2e; min-height: 100vh; padding: 40px 20px }
-  h1 { color: white; text-align: center } = "JSA Kanban"
-  div.board { display: flex; gap: 20px; justify-content: center }
-    div.col { background: #e2e8f0; border-radius: 12px; padding: 16px; width: 280px }
-      h3 = "To Do (${todo.length})"
-      div.card { background: white; padding: 12px; border-radius: 8px; margin: 8px 0 } each = "${todo}"
-        span = "${item}"
-        button @click = "setState('todo', getState('todo').filter((_, i) => i !== idx)); save()" = "×"
-      div.add { display: flex; gap: 6px; margin-top: 12px }
-        $t1 input { flex: 1; padding: 8px }
-        button @click = "addTodo()" = "+"
+div#kanban { display: flex; gap: 20px; padding: 40px }
+  div.col { background: #e2e8f0; border-radius: 12px; padding: 16px; width: 280px }
+    h3 = "To Do (${todo.length})"
+    div.card { background: white; padding: 12px; border-radius: 8px; margin: 8px 0 } each = "${todo}"
+      span = "${item}"
+      button @click = "setState('todo', getState('todo').filter((_, i) => i !== idx)); save()" = "×"
+    div.add { display: flex; gap: 6px }
+      $t1 input { flex: 1; padding: 8px }
+      button @click = "addTodo()" = "+"
 ```
 
 ---
@@ -267,242 +317,134 @@ div#kanban { background: #1a1a2e; min-height: 100vh; padding: 40px 20px }
 import { JSA, mount, load } from 'jsa-framework';
 ```
 
-### Mount Template String
+### Mount Template
 ```js
-const template = `
-let count = 0
-div = "${count}"
-button @click = "setState('count', getState('count') + 1)" = "+"
-`;
-
-mount('#app', template);
+const app = mount('#app', template);
 ```
 
 ### Load .jsa File
 ```js
-load('counter.jsa', '#app');
+const app = await load('counter.jsa', '#app');
 ```
 
 ### Manual Instance
 ```js
 const app = new JSA('#container');
 app.render(template);
+app.destroy(); // cleanup
 ```
 
 ---
 
-## File Structure
+## AST CLI
 
-```
-project/
-├── jsa-runtime.js   # Or import from npm
-├── index.html       # App shell
-├── counter.jsa      # Component 1
-├── todo.jsa         # Component 2
-└── style.css        # Optional global styles
-```
+Validate `.jsa` syntax for AI agents:
 
-### index.html Template
-```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>JSA App</title>
-  <style>body { font-family: system-ui; }</style>
-</head>
-<body>
-  <nav>
-    <button onclick="load('counter.jsa', this)">Counter</button>
-    <button onclick="load('todo.jsa', this)">Todo</button>
-  </nav>
-  <div id="app"></div>
-  
-  <script type="module">
-    import { load } from 'https://esm.sh/jsa-framework';
-    
-    window.load = (file, btn) => {
-      document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-      btn?.classList.add('active');
-      load(file, btn || '#app');
-    };
-    
-    load('counter.jsa', document.querySelector('nav button'));
-  </script>
-</body>
-</html>
-```
-
----
-
-## Common Patterns
-
-### Form Handling
-```jsa
-let email = ""
-fn submit = "console.log(getState('email')); setState('email', '')"
-
-form @submit = "submit()"
-  $email input[type=email]
-  button = "Subscribe"
-```
-
-### Conditional Rendering
-```jsa
-let show = false
-fn toggle = "setState('show', !getState('show'))"
-
-button @click = "toggle()" = "Toggle"
-div = "${show ? 'Visible!' : 'Hidden'}"
-```
-
-### List Rendering (each)
-```jsa
-let items = ["A", "B", "C"]
-
-ul
-  li each = "${items}" = "${item}"
-
-// With objects:
-let users = [{name: "Alice"}, {name: "Bob"}]
-
-div each = "${users}"
-  span = "${idx + 1}. ${item.name}"
-```
-
-### Async Operations
-```jsa
-let data = ""
-fn fetch = "fetch('/api').then(r => r.text()).then(t => setState('data', t))"
-
-button @click = "fetch()" = "Load"
-div = "${data}"
-```
-
----
-
-## Best Practices
-
-1. **Keep `.jsa` files small** — One component per file
-2. **Use `fn` for handlers** — Reusable and testable
-3. **Computed for derived state** — Auto-updates
-4. **Refs for DOM access** — Don't querySelector manually
-5. **Immutable updates for arrays** — `[...old, new]`
-6. **Fns can call other fns** — `fn del = "setState('x', ''); save()"`
-7. **State supports arrays/objects** — `let items = []`, `let data = {}`
-
----
-
-## Debugging
-
-### Check State
-```js
-// In browser console
-const app = new JSA();
-app.render(template);
-console.log(app.state);
-```
-
-### Debug Page
-```html
-<div id="debug"></div>
-<script type="module">
-  import { JSA } from 'jsa-framework';
-  const app = new JSA('#debug');
-  app.render(template);
-  console.log('State:', app.state);
-  console.log('Functions:', app.fns);
-</script>
-```
-
----
-
-## Comparison
-
-| Task | React | Vue | JSA |
-|------|-------|-----|-----|
-| Counter | 25 lines | 20 lines | 15 lines |
-| Files | 2+ | 2+ | 1 |
-| Setup | Build | Build | None |
-| Reactivity | useState | ref | let |
-
----
-
-## AST CLI for AI Agents
-
-Validate `.jsa` syntax programmatically:
-
-### Installation
 ```bash
-npm install -g jsa-framework
+jsa-ast file.jsa           # Validate
+jsa-ast file.jsa --json    # JSON AST output
+jsa-ast file.jsa --tree    # Tree view
+jsa-ast file.jsa --quiet   # Errors only
+jsa-ast *.jsa              # Batch validate
 ```
-
-### Commands
-```bash
-# Validate file
-jsa-ast file.jsa
-
-# JSON output (for AI parsing)
-jsa-ast file.jsa --json
-
-# Tree output
-jsa-ast file.jsa --tree
-
-# Quiet mode (errors only)
-jsa-ast file.jsa --quiet
-```
-
-### Exit Codes
-| Code | Meaning |
-|------|---------|
-| `0` | Valid syntax |
-| `1` | Syntax errors |
 
 ### JSON Output Schema
 ```json
 {
   "ast": {
     "type": "program",
-    "source": "...",
     "state": [{ "type": "state|computed", "name": "...", "line": 1 }],
     "functions": [{ "type": "function", "name": "...", "handler": "...", "line": 1 }],
-    "elements": [{ "type": "element", "tag": "div", "line": 1 }]
+    "watchers": [{ "type": "watcher", "key": "...", "handler": "...", "line": 1 }],
+    "hooks": [{ "type": "hook", "phase": "mount|destroy", "handler": "...", "line": 1 }],
+    "style": "scoped CSS string or null",
+    "elements": [{ "type": "element", "tag": "div", "each": null, "if": null, "show": null, "bind": null, "attrs": {}, "line": 1 }],
+    "refs": ["inputName"]
   },
-  "errors": [{ "line": 1, "message": "..." }],
-  "warnings": [{ "line": 1, "message": "..." }]
+  "errors": [],
+  "warnings": []
 }
 ```
 
 ---
 
-## Quick Reference
+## Common Patterns
 
+### Conditional Content
 ```jsa
-// State
-let name = "World"
+let show = false
+fn toggle = "setState('show', !getState('show'))"
 
-// Computed
-const greeting = computed(() => "Hello " + name)
+button @click = "toggle()" = "${getState('show') ? 'Hide' : 'Show'}"
+div if = "${show}" = "Now you see me!"
+div show = "${show}" = "I'm hidden but still in DOM"
+```
 
-// Functions
-fn update = "setState('name', 'New')"
+### Form with Bind
+```jsa
+let email = ""
+let subscribed = false
 
-// Elements
-div#app.container { color: blue }
-  h1 = "${greeting}"
-  button @click = "update()" = "Click"
-  $ref input
+div.form
+  input :type = "email" :placeholder = "Email" bind = "email"
+  button :disabled = "${!email.includes('@')}" @click = "setState('subscribed', true)" = "Subscribe"
+  p show = "${subscribed}" = "Thanks!"
+```
+
+### Auto-Save with Watch
+```jsa
+let notes = ""
+watch notes = "localStorage.setItem('notes', getState('notes'))"
+on mount = "const s = localStorage.getItem('notes'); if(s) setState('notes', s)"
+
+textarea bind = "notes" :placeholder = "Start typing..."
+p = "${notes.length} characters — auto-saved"
+```
+
+### Async Data Loading
+```jsa
+let data = []
+let loading = false
+on mount = "setState('loading', true); fetch('/api').then(r => r.json()).then(d => { setState('data', d); setState('loading', false) })"
+
+p if = "${loading}" = "Loading..."
+div.list if = "${!loading}"
+  div each = "${data}" = "${item.name}"
 ```
 
 ---
 
-## Next Steps
+## Best Practices
 
-1. Copy `jsa-runtime.js` or install via npm
-2. Create `counter.jsa` with the example above
-3. Create `index.html` shell
-4. Open in browser
-5. Iterate!
+1. **One component per `.jsa` file** — keep files small
+2. **Use `fn` for handlers** — reusable and composable
+3. **Use `computed` for derived state** — auto-updates
+4. **Use `bind` for forms** — cleaner than refs for input values
+5. **Use `if` to remove, `show` to hide** — `if` is more efficient, `show` preserves state
+6. **Use `watch` for side effects** — localStorage, API calls, logging
+7. **Use `on mount` for initialization** — data loading, timers, etc.
+8. **Use scoped `style` blocks** — hover states, transitions, media queries
+9. **Immutable array updates** — `[...old, new]`, `.filter()`, `.map()`
+10. **Refs for DOM-only access** — prefer `bind` over refs for input values
+
+---
+
+## Feature Comparison with Vue 3
+
+| Vue 3 | JSA v5 | Example |
+|-------|--------|---------|
+| `v-if` | `if = "${expr}"` | `div if = "${show}"` |
+| `v-show` | `show = "${expr}"` | `div show = "${open}"` |
+| `v-for` | `each = "${arr}"` | `li each = "${items}"` |
+| `v-model` | `bind = "key"` | `input bind = "name"` |
+| `v-bind` | `:attr = "val"` | `:disabled = "${!ok}"` |
+| `v-on` | `@event = "code"` | `@click = "inc()"` |
+| `ref()` | `let x = 0` | `let count = 0` |
+| `computed()` | `computed(() => ...)` | `const d = computed(...)` |
+| `watch()` | `watch key = "code"` | `watch items = "save()"` |
+| `onMounted()` | `on mount = "code"` | `on mount = "load()"` |
+| `onUnmounted()` | `on destroy = "code"` | `on destroy = "cleanup()"` |
+| `<style scoped>` | `style` block | `style\n  .x { ... }` |
 
 ---
 
