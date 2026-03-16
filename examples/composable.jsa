@@ -1,0 +1,15 @@
+// Counter with Functions - JSA
+
+let count = 0
+const doubled = computed(() => count * 2)
+fn dec = "setState('count', getState('count') - 1)"
+fn rst = "setState('count', 0)"
+fn inc = "setState('count', getState('count') + 1)"
+
+div#counter { display: flex; flex-direction: column; align-items: center; padding: 40px; gap: 24px; background: white; border-radius: 16px }
+  h1 = "Composable-style Counter"
+  div.display { font-size: 32px; font-weight: bold; color: #3b82f6; padding: 20px } = "${count} (x2: ${doubled})"
+  div.buttons { display: flex; gap: 12px }
+    button @click = "dec()" = "−"
+    button @click = "rst()" = "Reset"
+    button @click = "inc()" = "+"

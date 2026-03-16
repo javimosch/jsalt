@@ -1,0 +1,43 @@
+// Calculator - JSA Example
+
+let display = "0"
+let prev = ""
+let op = ""
+let newNum = true
+
+fn clear = "setState('display', '0'); setState('prev', ''); setState('op', ''); setState('newNum', true)"
+fn input = "const d = '1'; const cur = getState('display'); if(getState('newNum')) { setState('display', d); setState('newNum', false); } else { setState('display', cur === '0' && d !== '.' ? d : cur + d); }"
+fn operate = "const o = '+'; setState('prev', getState('display')); setState('op', o); setState('newNum', true)"
+fn equals = "const a = parseFloat(getState('prev')); const b = parseFloat(getState('display')); const o = getState('op'); if(!o) return; let r = o==='+' ? a+b : o==='-' ? a-b : o==='×' ? a*b : o==='÷' ? (b!==0?a/b:'Error') : b; setState('display', r.toString()); setState('prev', ''); setState('op', ''); setState('newNum', true)"
+fn negate = "setState('display', (parseFloat(getState('display')) * -1).toString())"
+fn percent = "setState('display', (parseFloat(getState('display')) / 100).toString())"
+
+div#calculator { width: 320px; margin: 40px auto; background: #1a1a2e; border-radius: 20px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.3) }
+  div.screen { background: #2d2d44; border-radius: 12px; padding: 20px; margin-bottom: 20px; text-align: right }
+    div.history { color: #888; font-size: 14px; min-height: 20px } = "${prev} ${op}"
+    div.current { color: #fff; font-size: 48px; font-weight: bold; overflow: hidden } = "${display}"
+
+  div.keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px }
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "clear()" = "AC"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "negate()" = "±"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "percent()" = "%"
+    button.key.op { background: #ff9f0a; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "setState('prev', getState('display')); setState('op', '÷'); setState('newNum', true)" = "÷"
+
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='7'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "7"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='8'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "8"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='9'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "9"
+    button.key.op { background: #ff9f0a; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "setState('prev', getState('display')); setState('op', '×'); setState('newNum', true)" = "×"
+
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='4'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "4"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='5'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "5"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='6'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "6"
+    button.key.op { background: #ff9f0a; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "setState('prev', getState('display')); setState('op', '-'); setState('newNum', true)" = "-"
+
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='1'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "1"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='2'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "2"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='3'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "3"
+    button.key.op { background: #ff9f0a; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "setState('prev', getState('display')); setState('op', '+'); setState('newNum', true)" = "+"
+
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer; grid-column: span 2 } @click = "const d='0'; const cur=getState('display'); setState('display', getState('newNum')?(d==='.'?'0.':d):(cur==='0'&&d!=='.')?d:cur+d); setState('newNum', false)" = "0"
+    button.key { background: #3d3d5c; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "const d='.'; const cur=getState('display'); setState('display', getState('newNum')?'0.':cur.includes('.')?cur:cur+d); setState('newNum', false)" = "."
+    button.key.equals { background: #ff9f0a; color: #fff; border: none; padding: 20px; font-size: 24px; border-radius: 12px; cursor: pointer } @click = "equals()" = "="

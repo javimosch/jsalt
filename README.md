@@ -1,125 +1,146 @@
-# JSA Framework — JS Alternative
+# JSA Framework
 
-**HTML + CSS + JS in one `.jsa` file** — designed for AI agents to generate code with minimal boilerplate.
+**JSA (JS Alternative)** — A minimal reactive framework where **HTML + CSS + JS live in one `.jsa` file**.
+
+<img width="512" height="512" src="./logo.jpg" alt="JSA Logo"/>
 
 ---
 
 ## Quick Start
 
+### Install
 ```bash
-# Copy these files to your server:
-# - jsa-runtime.js
-# - index.html  
-# - counter.jsa
-# - todo.jsa
+npm install jsa-framework
+```
 
-# Then serve the directory
-npx serve .
+### Usage
+```js
+import { JSA, mount, load } from 'jsa-framework';
+
+// Mount template
+mount('#app', `
+  let count = 0
+  div = "${count}"
+  button @click = "setState('count', getState('count') + 1)" = "+"
+`);
+
+// Or load .jsa file
+load('counter.jsa', '#app');
+```
+
+### CDN (No Install)
+```html
+<script type="module">
+  import { JSA } from 'https://esm.sh/jsa-framework';
+</script>
+```
+
+---
+
+## Examples
+
+Run the demo:
+```bash
+npm run demo
 # Open http://localhost:3000
 ```
+
+**Examples included:**
+- `examples/counter.jsa` — Basic counter (15 lines)
+- `examples/calculator.jsa` — Full calculator (44 lines)
+- `examples/kanban.jsa` — Kanban board with composition + localStorage (80 lines)
+- `examples/store.jsa` — Todo list (12 lines)
+- `examples/composable.jsa` — Reusable logic (15 lines)
 
 ---
 
 ## Syntax
 
-### State
 ```jsa
+// State
 let count = 0
-let name = "World"
-```
+const doubled = computed(() => count * 2)
 
-### Elements
-```jsa
-div#id.class1.class2 { style: value } @event = "handler" = "content"
-```
+// Functions
+fn inc = "setState('count', getState('count') + 1)"
 
-### References (DOM access)
-```jsa
-$myRef input { ... }
-```
-
-### Children (indentation-based)
-```jsa
-div
-  span = "child 1"
-  span = "child 2"
-```
-
----
-
-## Complete Example
-
-```jsa
-// Counter Component
-
-let count = 0
-
-div#app { display: flex; gap: 10px }
+// UI
+div#app { display: flex }
   h1 = "Count: ${count}"
-  button @click = "setState('count', get('count') - 1)" = "−"
-  button @click = "setState('count', get('count') + 1)" = "+"
+  button @click = "inc()" = "+"
 ```
 
 ---
 
-## Handler Context
+## AST CLI
 
-Inside `@click`, `@submit`, etc., you have access to:
+Validate `.jsa` syntax for AI agents:
 
-| Variable | Description |
+```bash
+# Install globally
+npm install -g jsa-framework
+
+# Validate a file
+jsa-ast counter.jsa
+
+# Output as JSON (for AI parsing)
+jsa-ast counter.jsa --json
+
+# Output as tree
+jsa-ast counter.jsa --tree
+
+# Quiet mode (errors only)
+jsa-ast counter.jsa --quiet
+```
+
+**Exit codes:**
+- `0` - Valid syntax
+- `1` - Syntax errors found
+
+---
+
+## Handler API
+
+| Function | Description |
 |----------|-------------|
-| `state` | Component state object |
-| `refs` | DOM element references |
-| `el` | Current element |
-| `e` | Event object |
-| `setState(key, value)` | Update state and re-render |
-| `get(key)` | Get state value |
+| `setState(key, val)` | Update state + re-render |
+| `getState(key)` | Get current value |
+| `refs.name` | DOM element reference |
+| `update()` | Force re-render |
 
 ---
 
-## API
+## Project Structure
 
-```js
-import { mount, load } from './jsa-runtime.js';
-
-// Mount template string
-mount('#container', templateString);
-
-// Load .jsa file
-load('component.jsa', '#container');
+```
+jsa-framework/
+├── jsa-runtime.js       # Core runtime (published to npm)
+├── package.json         # NPM config
+├── README.md            # This file
+├── examples/            # Demo apps (not published)
+│   ├── index.html
+│   ├── counter.jsa
+│   ├── calculator.jsa
+│   ├── store.jsa
+│   └── composable.jsa
+└── .agents/             # AI agent skills (not published)
+    └── skills/
+        └── jsalt-usage/
+            └── SKILL.md
 ```
 
 ---
 
-## Files
+## NPM Package
 
-```
-jsalt/
-├── jsa-runtime.js   # Core runtime (202 lines)
-├── index.html       # Shell (32 lines)
-├── counter.jsa      # Counter (15 lines)
-└── todo.jsa         # Todo (13 lines)
-```
+Only these files are published:
+- `jsa-runtime.js` — Core runtime (~8KB)
+- `README.md` — Documentation
 
-**Total: 262 lines** for a complete component-based framework.
+Examples and skill docs are **not** included in the npm package.
 
 ---
 
-## Why JSA?
+## License
 
-| Framework | Lines for Counter | Files |
-|-----------|------------------|-------|
-| React | ~40 | 2+ |
-| Vue | ~35 | 2+ |
-| Svelte | ~30 | 2+ |
-| **JSA** | **15** | **1** |
-
-**AI-Agent Optimized:**
-- 🌳 Tree structure = easy generation
-- ❌ No closing tags
-- 📦 Full encapsulation
-- ⚡ Zero boilerplate
-
----
-
-MIT — Build something amazing.
+MIT

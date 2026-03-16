@@ -1,0 +1,50 @@
+{
+  "name": "jsa-framework",
+  "version": "1.0.0",
+  "description": "JSA - JS Alternative. HTML+CSS+JS in one .jsa file. Reactive, component-based, AI-agent optimized.",
+  "type": "module",
+  "main": "jsa-runtime.js",
+  "bin": {
+    "jsa-ast": "./bin/jsa-ast.js"
+  },
+  "exports": {
+    ".": "./jsa-runtime.js",
+    "./runtime": "./jsa-runtime.js"
+  },
+  "files": [
+    "jsa-runtime.js",
+    "README.md",
+    "bin/jsa-ast.js"
+  ],
+  "scripts": {
+    "start": "cd examples && npx serve .",
+    "demo": "cd examples && npx serve .",
+    "ast": "node bin/jsa-ast.js",
+    "validate": "node bin/jsa-ast.js examples/*.jsa"
+  },
+  "keywords": [
+    "jsa",
+    "framework",
+    "reactive",
+    "components",
+    "ai",
+    "agent",
+    "minimal",
+    "frontend",
+    "ast",
+    "validator"
+  ],
+  "author": "JSA Framework",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jsalt/jsa"
+  },
+  "homepage": "https://github.com/jsalt/jsa#readme",
+  "bugs": {
+    "url": "https://github.com/jsalt/jsa/issues"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
+  }
+}

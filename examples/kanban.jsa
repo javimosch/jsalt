@@ -1,0 +1,53 @@
+// Kanban Board - JSA
+// Features: each loops, localStorage, add/move/delete cards
+
+let todo = ["Design UI", "Write Tests"]
+let doing = ["Build API"]
+let done = []
+
+fn save = "localStorage.setItem('kanban', JSON.stringify({todo: getState('todo'), doing: getState('doing'), done: getState('done')}))"
+fn loadData = "const s = localStorage.getItem('kanban'); if(s) { const d = JSON.parse(s); setState('todo', d.todo||[]); setState('doing', d.doing||[]); setState('done', d.done||[]); }"
+
+fn addTodo = "const t = refs.t1.value; if(!t) return; setState('todo', [...getState('todo'), t]); refs.t1.value = ''; save()"
+fn addDoing = "const t = refs.t2.value; if(!t) return; setState('doing', [...getState('doing'), t]); refs.t2.value = ''; save()"
+fn addDone = "const t = refs.t3.value; if(!t) return; setState('done', [...getState('done'), t]); refs.t3.value = ''; save()"
+
+div#kanban { background: #1a1a2e; min-height: 100vh; padding: 40px 20px; font-family: system-ui }
+  h1 { color: white; text-align: center; margin-bottom: 40px; font-size: 28px } = "JSA Kanban"
+
+  div.board { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap }
+
+    div.col { background: #e2e8f0; border-radius: 12px; padding: 16px; width: 280px; min-height: 300px }
+      h3 { margin: 0 0 12px 0; color: #334155 } = "To Do (${todo.length})"
+      div.card { background: white; padding: 12px; border-radius: 8px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1) } each = "${todo}"
+        span = "${item}"
+        div { display: flex; gap: 4px }
+          button { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer } @click = "const t = getState('todo'); const d = getState('doing'); setState('doing', [...d, t[idx]]); setState('todo', t.filter((_, i) => i !== idx)); save()" = "→"
+          button { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer } @click = "setState('todo', getState('todo').filter((_, i) => i !== idx)); save()" = "×"
+      div.empty { color: #94a3b8; text-align: center; padding: 20px; font-size: 14px } = "${todo.length === 0 ? 'No cards yet' : ''}"
+      div.add { display: flex; gap: 6px; margin-top: 12px }
+        $t1 input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px }
+        button { background: #22c55e; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold } @click = "addTodo()" = "+"
+
+    div.col { background: #e2e8f0; border-radius: 12px; padding: 16px; width: 280px; min-height: 300px }
+      h3 { margin: 0 0 12px 0; color: #334155 } = "In Progress (${doing.length})"
+      div.card { background: white; padding: 12px; border-radius: 8px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1) } each = "${doing}"
+        span = "${item}"
+        div { display: flex; gap: 4px }
+          button { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer } @click = "const d = getState('doing'); const dn = getState('done'); setState('done', [...dn, d[idx]]); setState('doing', d.filter((_, i) => i !== idx)); save()" = "→"
+          button { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer } @click = "setState('doing', getState('doing').filter((_, i) => i !== idx)); save()" = "×"
+      div.empty { color: #94a3b8; text-align: center; padding: 20px; font-size: 14px } = "${doing.length === 0 ? 'No cards yet' : ''}"
+      div.add { display: flex; gap: 6px; margin-top: 12px }
+        $t2 input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px }
+        button { background: #22c55e; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold } @click = "addDoing()" = "+"
+
+    div.col { background: #e2e8f0; border-radius: 12px; padding: 16px; width: 280px; min-height: 300px }
+      h3 { margin: 0 0 12px 0; color: #334155 } = "Done (${done.length})"
+      div.card { background: white; padding: 12px; border-radius: 8px; margin: 8px 0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1) } each = "${done}"
+        span = "${item}"
+        div { display: flex; gap: 4px }
+          button { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer } @click = "setState('done', getState('done').filter((_, i) => i !== idx)); save()" = "×"
+      div.empty { color: #94a3b8; text-align: center; padding: 20px; font-size: 14px } = "${done.length === 0 ? 'No cards yet' : ''}"
+      div.add { display: flex; gap: 6px; margin-top: 12px }
+        $t3 input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px }
+        button { background: #22c55e; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold } @click = "addDone()" = "+"
