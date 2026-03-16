@@ -1,6 +1,7 @@
 /**
- * JSA Runtime v5 - Reactive Framework
+ * JSA Runtime v6 - Reactive Framework
  * Loops, Conditionals, Binding, Dynamic Attrs, Watchers, Lifecycle, Scoped CSS
+ * :class Merging, html Directive, :style Dynamic, Event Modifiers, Transitions
  */
 
 export class JSA {
@@ -231,7 +232,7 @@ export class JSA {
   }
 
   parseElement(t) {
-    const n = { type: 'element', tag: 'div', id: null, classes: [], styles: {}, events: {}, attrs: {}, content: null, children: [], ref: null, each: null, if: null, show: null, bind: null };
+    const n = { type: 'element', tag: 'div', id: null, classes: [], styles: {}, events: {}, attrs: {}, content: null, children: [], ref: null, each: null, if: null, show: null, bind: null, html: null, transition: null };
     let r = t;
 
     const rm = r.match(/^\$([a-zA-Z0-9_-]+)/);
@@ -265,18 +266,24 @@ export class JSA {
     const eachM = r.match(/\beach\s*=\s*"\$\{([^}]+)\}"/);
     if (eachM) { n.each = eachM[1]; r = r.replace(eachM[0], '').trim(); }
 
+    const transM = r.match(/\btransition\s*=\s*"(\w[\w-]*)"/);
+    if (transM) { n.transition = transM[1]; r = r.replace(transM[0], '').trim(); }
+
     const bindM = r.match(/\bbind\s*=\s*"(\w+)"/);
     if (bindM) { n.bind = bindM[1]; r = r.replace(bindM[0], '').trim(); }
+
+    const htmlM = r.match(/\bhtml\s*=\s*"([^"]*)"/);
+    if (htmlM) { n.html = htmlM[1]; r = r.replace(htmlM[0], '').trim(); }
 
     const attrRe = /:([a-zA-Z][\w-]*)\s*=\s*"([^"]+)"/g;
     let am;
     while ((am = attrRe.exec(r)) !== null) n.attrs[am[1]] = am[2];
     r = r.replace(/:[a-zA-Z][\w-]*\s*=\s*"[^"]+"/g, '').trim();
 
-    const er = /@(\w+)\s*=\s*"([^"]+)"/g;
+    const er = /@(\w+(?:\.\w+)*)\s*=\s*"([^"]+)"/g;
     let em;
     while ((em = er.exec(r)) !== null) n.events[em[1]] = em[2];
-    r = r.replace(/@\w+\s*=\s*"[^"]+"/g, '').trim();
+    r = r.replace(/@\w+(?:\.\w+)*\s*=\s*"[^"]+"/g, '').trim();
 
     const cm = r.match(/^=\s*"([^"]*)"/);
     if (cm) n.content = cm[1];
@@ -321,11 +328,34 @@ export class JSA {
     Object.assign(el.style, n.styles);
     if (this._scopeId) el.setAttribute('data-jsa-' + this._scopeId, '');
 
+    if (n.attrs.class) {
+      const resolved = this._resolveAttr(n.attrs.class, ctx);
+      if (resolved) {
+        String(resolved).split(/\s+/).forEach(c => {
+          if (c && c !== 'undefined' && c !== 'null' && c !== 'false') el.classList.add(c);
+        });
+      }
+    }
+
+    if (n.attrs.style) {
+      const resolved = this._resolveAttr(n.attrs.style, ctx);
+      if (resolved) {
+        String(resolved).split(';').forEach(pair => {
+          const ci = pair.indexOf(':');
+          if (ci === -1) return;
+          const k = pair.slice(0, ci).trim();
+          const v = pair.slice(ci + 1).trim();
+          if (k && v) el.style[k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v;
+        });
+      }
+    }
+
     if (n.show !== null && !this.evaluate(n.show, ctx)) el.style.display = 'none';
     if (n.ref) this.refs[n.ref] = el;
 
     const boolAttrs = new Set(['disabled', 'checked', 'hidden', 'readonly', 'required', 'selected', 'multiple', 'autofocus']);
     for (const [attr, val] of Object.entries(n.attrs)) {
+      if (attr === 'class' || attr === 'style') continue;
       const resolved = this._resolveAttr(val, ctx);
       if (boolAttrs.has(attr)) {
         if (resolved) el.setAttribute(attr, '');
@@ -345,15 +375,43 @@ export class JSA {
       });
     }
 
-    if (n.content !== null) el.textContent = this.interpolate(n.content, ctx);
+    if (n.html !== null) el.innerHTML = this.interpolate(n.html, ctx);
+    else if (n.content !== null) el.textContent = this.interpolate(n.content, ctx);
 
-    for (const [ev, h] of Object.entries(n.events)) {
+    const keyMap = { enter: 'Enter', esc: 'Escape', tab: 'Tab', space: ' ', delete: 'Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+    for (const [evName, h] of Object.entries(n.events)) {
       const loopCtx = { ...ctx };
-      el.addEventListener(ev, (e) => this.execHandler(h, e, el, loopCtx));
+      const parts = evName.split('.');
+      const ev = parts[0], mods = new Set(parts.slice(1));
+      el.addEventListener(ev, (e) => {
+        if (mods.has('prevent')) e.preventDefault();
+        if (mods.has('stop')) e.stopPropagation();
+        if (mods.has('self') && e.target !== el) return;
+        for (const [m, key] of Object.entries(keyMap)) {
+          if (mods.has(m) && e.key !== key) return;
+        }
+        this.execHandler(h, e, el, loopCtx);
+      }, { once: mods.has('once') });
     }
 
     if (n.children) this.build(n.children, el, ctx);
     parent.appendChild(el);
+
+    if (n.transition) {
+      const name = n.transition;
+      el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.classList.remove(`${name}-enter-from`);
+          el.classList.add(`${name}-enter-to`);
+          const done = () => {
+            el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
+            el.removeEventListener('transitionend', done);
+          };
+          el.addEventListener('transitionend', done);
+        });
+      });
+    }
   }
 
   evaluate(expr, ctx) {

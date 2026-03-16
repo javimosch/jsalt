@@ -49,6 +49,7 @@ npm run demo
 - `examples/kanban.jsa` — Kanban board (each loops, localStorage, lifecycle)
 - `examples/store.jsa` — Todo list (bind, each, conditionals)
 - `examples/form.jsa` — Form demo (bind, :attrs, if/show, watch, scoped CSS)
+- `examples/dashboard.jsa` — **Tailwind CDN dashboard** (:class, html, :style, transitions, event modifiers)
 - `examples/composable.jsa` — Reusable function pattern
 
 ---
@@ -83,7 +84,7 @@ div#app { display: flex }
 
 ---
 
-## v5 Features
+## v6 Features
 
 | Feature | Syntax | Vue 3 Equivalent |
 |---------|--------|-------------------|
@@ -92,6 +93,12 @@ div#app { display: flex }
 | Loop | `each = "${array}"` | `v-for` |
 | Binding | `bind = "key"` | `v-model` |
 | Attrs | `:disabled = "${!ok}"` | `v-bind` |
+| **:class** | `:class = "bg-blue-500 p-4"` | `:class` (merging) |
+| **:style** | `:style = "width: ${pct}%"` | `:style` (dynamic) |
+| **Raw HTML** | `html = "<b>bold</b>"` | `v-html` |
+| **Modifiers** | `@click.prevent = "..."` | `.prevent`, `.stop` |
+| **Key mods** | `@keydown.enter = "..."` | `.enter`, `.esc` |
+| **Transitions** | `transition = "fade"` | `<Transition>` |
 | Watch | `watch key = "code"` | `watch()` |
 | Mount | `on mount = "code"` | `onMounted()` |
 | Destroy | `on destroy = "code"` | `onUnmounted()` |
@@ -130,17 +137,18 @@ jsa-ast *.jsa                 # Batch validate
 
 ```
 jsa-framework/
-├── jsa-runtime.js       # Core runtime (~280 lines, published)
+├── jsa-runtime.js       # Core runtime (~300 lines, published)
 ├── bin/jsa-ast.js       # AST CLI (published)
 ├── package.json         # NPM config
 ├── README.md            # This file (published)
 ├── examples/            # Demo apps (not published)
-│   ├── index.html
+│   ├── index.html       # Demo shell (Tailwind CDN)
 │   ├── counter.jsa
 │   ├── calculator.jsa
 │   ├── kanban.jsa
 │   ├── store.jsa
 │   ├── form.jsa
+│   ├── dashboard.jsa    # Tailwind showcase (v6)
 │   └── composable.jsa
 └── .agents/             # AI agent skills (not published)
 ```

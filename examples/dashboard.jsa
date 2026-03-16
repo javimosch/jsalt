@@ -1,0 +1,117 @@
+// Dashboard - JSA v6 + Tailwind CDN
+// Showcases: :class merging, html directive, :style dynamic, event modifiers, transitions
+
+let dark = false
+let search = ""
+let modal = false
+let toast = ""
+let progress = 68
+let activities = [{name: "Alice Chen", action: "Deployed v2.4 to production", time: "2m ago", type: "success"}, {name: "Bob Park", action: "Opened PR #142 - Auth refactor", time: "18m ago", type: "info"}, {name: "Carol Wu", action: "Resolved issue #89", time: "1h ago", type: "success"}, {name: "Dan Lee", action: "Build failed on main", time: "2h ago", type: "error"}, {name: "Eve Kim", action: "Merged feature/payments", time: "3h ago", type: "success"}, {name: "Frank Li", action: "Added API integration tests", time: "5h ago", type: "info"}]
+const filtered = computed(() => activities.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.action.toLowerCase().includes(search.toLowerCase())))
+
+fn toggleDark = "setState('dark', !getState('dark'))"
+fn openModal = "setState('modal', true)"
+fn closeModal = "setState('modal', false)"
+fn bump = "const p = Math.min(100, getState('progress') + 8); setState('progress', p); setState('toast', p >= 100 ? '\uD83C\uDF89 Sprint complete!' : '\u2713 Task completed!'); setTimeout(() => setState('toast', ''), 3000)"
+
+style
+  .fade-enter-from { opacity: 0; transform: scale(0.95); }
+  .fade-enter-active { transition: all 0.2s ease-out; }
+  .fade-enter-to { opacity: 1; transform: scale(1); }
+  .slide-enter-from { opacity: 0; transform: translateY(1rem); }
+  .slide-enter-active { transition: all 0.3s ease-out; }
+  .slide-enter-to { opacity: 1; transform: translateY(0); }
+
+div :class = "${dark ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'} min-h-screen transition-colors duration-300 font-sans"
+
+  nav :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-b px-6 h-16 flex items-center justify-between"
+    div :class = "flex items-center gap-3"
+      div :class = "w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center" html = "<svg viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' class='w-4 h-4'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>"
+      h1 :class = "text-xl font-bold" = "Dashboard"
+    div :class = "flex items-center gap-3"
+      input :class = "${dark ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 border-gray-200 text-gray-900 placeholder-gray-400'} border rounded-lg pl-3 pr-4 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500" :type = "text" :placeholder = "Search activities..." bind = "search" @keydown.esc = "setState('search', '')"
+      button :class = "${dark ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'} p-2 rounded-lg transition-colors text-lg" @click = "toggleDark()" = "${dark ? '\u2600\uFE0F' : '\uD83C\uDF19'}"
+
+  div :class = "max-w-7xl mx-auto px-6 py-8"
+
+    div :class = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8"
+      div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5 hover:shadow-lg transition-shadow"
+        div :class = "flex justify-between items-start"
+          div
+            p :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Total Users"
+            p :class = "text-2xl font-bold mt-1" = "12,847"
+          span :class = "text-3xl" = "\uD83D\uDC65"
+        p :class = "text-green-500 text-sm mt-3 font-medium" html = "\u2191 12.5% <span class='${dark ? 'text-gray-500' : 'text-gray-400'} font-normal'>vs last month</span>"
+      div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5 hover:shadow-lg transition-shadow"
+        div :class = "flex justify-between items-start"
+          div
+            p :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Revenue"
+            p :class = "text-2xl font-bold mt-1" = "$48.2K"
+          span :class = "text-3xl" = "\uD83D\uDCB0"
+        p :class = "text-green-500 text-sm mt-3 font-medium" html = "\u2191 8.1% <span class='${dark ? 'text-gray-500' : 'text-gray-400'} font-normal'>vs last month</span>"
+      div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5 hover:shadow-lg transition-shadow"
+        div :class = "flex justify-between items-start"
+          div
+            p :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Active Now"
+            p :class = "text-2xl font-bold mt-1" = "573"
+          span :class = "text-3xl" = "\u26A1"
+        p :class = "text-red-500 text-sm mt-3 font-medium" html = "\u2193 2.3% <span class='${dark ? 'text-gray-500' : 'text-gray-400'} font-normal'>vs last hour</span>"
+      div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5 hover:shadow-lg transition-shadow"
+        div :class = "flex justify-between items-start"
+          div
+            p :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Uptime"
+            p :class = "text-2xl font-bold mt-1" = "99.98%"
+          span :class = "text-3xl" = "\uD83D\uDFE2"
+        p :class = "text-green-500 text-sm mt-3 font-medium" html = "\u2191 0.1% <span class='${dark ? 'text-gray-500' : 'text-gray-400'} font-normal'>this week</span>"
+
+    div :class = "grid grid-cols-1 lg:grid-cols-3 gap-6"
+
+      div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl lg:col-span-2"
+        div :class = "p-5 flex items-center justify-between border-b ${dark ? 'border-gray-800' : 'border-gray-100'}"
+          h2 :class = "text-lg font-semibold" = "Activity Feed"
+          span :class = "${dark ? 'text-gray-500' : 'text-gray-400'} text-sm" = "${filtered.length} events"
+        div
+          div :class = "p-4 flex items-center gap-4 border-b ${dark ? 'border-gray-800/50 hover:bg-gray-800/30' : 'border-gray-50 hover:bg-gray-50'} transition-colors" each = "${filtered}"
+            div :class = "${item.type === 'success' ? 'bg-green-500/10 text-green-500' : item.type === 'error' ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 text-blue-500'} w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0" = "${item.name.split(' ').map(x => x[0]).join('')}"
+            div :class = "flex-1 min-w-0"
+              p :class = "text-sm font-medium truncate" = "${item.name}"
+              p :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-xs truncate" = "${item.action}"
+            span :class = "${dark ? 'text-gray-600' : 'text-gray-400'} text-xs whitespace-nowrap" = "${item.time}"
+          p :class = "p-8 text-center ${dark ? 'text-gray-600' : 'text-gray-400'} text-sm" if = "${filtered.length === 0}" = "No matching activities"
+
+      div :class = "space-y-6"
+
+        div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5"
+          h3 :class = "font-semibold mb-4" = "Sprint Progress"
+          div :class = "${dark ? 'bg-gray-800' : 'bg-gray-200'} rounded-full h-3 mb-3 overflow-hidden"
+            div :class = "bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-500" :style = "width: ${progress}%"
+          div :class = "flex justify-between text-sm mb-4"
+            span :class = "${dark ? 'text-gray-400' : 'text-gray-500'}" = "${progress}% complete"
+            span :class = "${progress >= 100 ? 'text-green-500 font-medium' : dark ? 'text-gray-500' : 'text-gray-400'}" = "${progress >= 100 ? '\u2713 Done' : '100%'}"
+          button :class = "w-full py-2.5 rounded-lg font-medium transition-all ${progress >= 100 ? 'bg-green-500 text-white' : 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700'}" @click = "bump()" :disabled = "${progress >= 100}" = "${progress >= 100 ? '\uD83C\uDF89 Complete!' : '+ Complete Task'}"
+
+        div :class = "${dark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'} border rounded-xl p-5"
+          h3 :class = "font-semibold mb-3" = "Quick Actions"
+          button :class = "w-full text-left px-3 py-2.5 rounded-lg text-sm ${dark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-50 text-gray-700'} transition-colors mb-1" @click = "openModal()" = "\uD83D\uDCCA View Report"
+          button :class = "w-full text-left px-3 py-2.5 rounded-lg text-sm ${dark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-50 text-gray-700'} transition-colors mb-1" @click = "bump()" = "\uD83D\uDE80 Complete Task"
+          button :class = "w-full text-left px-3 py-2.5 rounded-lg text-sm ${dark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-50 text-gray-700'} transition-colors" @click = "toggleDark()" = "${dark ? '\u2600\uFE0F Light Mode' : '\uD83C\uDF19 Dark Mode'}"
+
+  div :class = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" if = "${modal}" @click.self = "closeModal()"
+    div :class = "${dark ? 'bg-gray-900 border border-gray-800' : 'bg-white'} rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl" transition = "fade"
+      h2 :class = "text-xl font-bold mb-6" = "\uD83D\uDCCA Weekly Report"
+      div :class = "space-y-3 mb-6"
+        div :class = "${dark ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-4 flex justify-between items-center"
+          span :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Commits"
+          span :class = "font-bold text-lg" = "147"
+        div :class = "${dark ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-4 flex justify-between items-center"
+          span :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "PRs Merged"
+          span :class = "font-bold text-lg" = "23"
+        div :class = "${dark ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-4 flex justify-between items-center"
+          span :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Issues Closed"
+          span :class = "font-bold text-lg" = "38"
+        div :class = "${dark ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-4 flex justify-between items-center"
+          span :class = "${dark ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Deployments"
+          span :class = "font-bold text-lg text-green-500" = "12"
+      button :class = "w-full bg-blue-500 text-white py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors" @click = "closeModal()" = "Close"
+
+  div :class = "fixed bottom-6 right-6 bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg font-medium text-sm" if = "${toast}" transition = "slide" = "${toast}"

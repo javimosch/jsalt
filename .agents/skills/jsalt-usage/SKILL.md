@@ -9,7 +9,7 @@ JSALT/JSA (JS Alternative) is a component-based reactive framework where **HTML 
 
 | Metric | Value |
 |--------|-------|
-| Runtime size | ~280 lines / ~8KB |
+| Runtime size | ~300 lines / ~9KB |
 | Counter app | 15 lines |
 | Files needed | 1 (`.jsa`) |
 | Bundle required | No |
@@ -135,13 +135,32 @@ textarea bind = "notes"
 button :disabled = "${!valid}" = "Submit"
 img :src = "${imageUrl}" :alt = "${title}"
 input :type = "${showPw ? 'text' : 'password'}"
-div :class = "${active ? 'tab active' : 'tab'}"
 a :href = "${link}" :target = "_blank" = "Open"
 ```
 - `:attr = "value"` — set attribute dynamically
 - `${expr}` — evaluated as expression (boolean attrs toggled)
 - Literal strings without `${}` passed as-is
 - Boolean attrs (`disabled`, `checked`, `hidden`, `readonly`, `required`): removed when falsy
+
+### 10a. `:class` Merging (Tailwind-friendly)
+```jsa
+div.container :class = "bg-blue-500 text-white p-4 rounded-lg"
+div :class = "${active ? 'bg-blue-600 ring-2' : 'bg-gray-200'} hover:scale-105 transition-all"
+button.btn :class = "${valid ? 'opacity-100' : 'opacity-40 cursor-not-allowed'}"
+```
+- `:class` merges with static `.classes` (doesn't replace)
+- Split by spaces, each token added via `classList.add()`
+- Falsy values (`false`, `null`, `undefined`) filtered out
+- Works with Tailwind CDN — classes detected via MutationObserver
+
+### 10b. `:style` Dynamic
+```jsa
+div :style = "width: ${progress}%"
+div :style = "transform: translateX(${offset}px); opacity: ${visible ? 1 : 0}"
+```
+- `:style` merges with static `{ }` styles
+- Parsed as `key: value;` pairs, camelCase converted
+- Values with colons (e.g. URLs) handled correctly
 
 ### 11. Watchers — `watch`
 ```jsa
@@ -168,7 +187,52 @@ on destroy = "console.log('Cleaning up')"
 - Multiple hooks of same type allowed
 - Mount hooks run via `setTimeout(0)` so DOM is painted
 
-### 13. Scoped CSS — `style`
+### 14. Raw HTML — `html`
+```jsa
+div html = "<svg viewBox='0 0 24 24'><path d='M12 2L2 22h20z'/></svg>"
+p html = "Bold <strong>text</strong> and <em>italic</em>"
+span html = "${item.up ? '↑' : '↓'} ${item.value}%"
+```
+- `html = "content"` — sets innerHTML (vs `= "content"` which sets textContent)
+- Supports `${}` interpolation inside HTML
+- Use single quotes for HTML attributes inside double-quoted value
+- If both `html` and `= "content"` present, `html` takes precedence
+
+### 15. Event Modifiers
+```jsa
+button @click.prevent = "submit()"
+input @keydown.enter = "search()"
+form @submit.prevent = "save()"
+div @click.stop = "toggle()"
+button @click.once = "init()"
+input @keydown.esc = "cancel()"
+div @click.self = "closeModal()"
+```
+- `.prevent` — calls `e.preventDefault()`
+- `.stop` — calls `e.stopPropagation()`
+- `.self` — only fires if `e.target === el`
+- `.once` — listener removed after first trigger
+- Key modifiers: `.enter`, `.esc`, `.tab`, `.space`, `.delete`, `.up`, `.down`, `.left`, `.right`
+- Chain multiple: `@keydown.enter.prevent = "submit()"`
+
+### 16. Enter Transitions
+```jsa
+div.card transition = "fade"
+div.toast transition = "slide"
+```
+- `transition = "name"` — applies CSS class lifecycle on element creation
+- Sequence: `{name}-enter-from` + `{name}-enter-active` → next frame removes `enter-from`, adds `enter-to` → on `transitionend` removes all
+- Define transition classes in a `style` block:
+```jsa
+style
+  .fade-enter-from { opacity: 0; transform: scale(0.95); }
+  .fade-enter-active { transition: all 0.2s ease-out; }
+  .fade-enter-to { opacity: 1; transform: scale(1); }
+```
+- Works great with `if` for show/hide animations
+- Pairs naturally with Tailwind CDN for utility-based transitions
+
+### 17. Scoped CSS — `style`
 ```jsa
 style
   .card { background: white; border-radius: 8px; padding: 16px }
@@ -200,17 +264,19 @@ Inside `@event`, `fn`, `watch`, and `on` handlers:
 | `item` | Current item in `each` loop | `item.text` |
 | `idx` | Current index in `each` loop | `idx` |
 
+**Note:** Event modifiers (`.prevent`, `.stop`, `.self`, `.once`, key filters) are handled automatically before the handler runs.
+
 ---
 
 ## Element Parse Order
 
 ```
-$ref → tag#id.class → { styles } → if → show → each → bind → :attrs → @events → = "content"
+$ref → tag#id.class → { styles } → if → show → each → transition → bind → html → :attrs → @events(.mods) → = "content"
 ```
 
 All directives can coexist on one line:
 ```jsa
-$ref input.field { padding: 8px } if = "${editing}" :type = "text" :placeholder = "Name" bind = "name" @keydown = "if(e.key==='Enter') save()" = "default"
+$ref input.field { padding: 8px } if = "${editing}" :type = "text" :placeholder = "Name" bind = "name" @keydown.enter = "save()" = "default"
 ```
 
 ---
@@ -253,7 +319,7 @@ div#todo { max-width: 500px; margin: 0 auto; padding: 30px }
     p if = "${items.length === 0}" = "No items — add one!"
 ```
 
-### Form with Validation (v5 showcase)
+### Form with Validation
 ```jsa
 let name = ""
 let email = ""
@@ -261,14 +327,11 @@ let agree = false
 let submitted = false
 const valid = computed(() => name.length > 0 && email.includes('@') && agree)
 
-on mount = "console.log('Form ready')"
 watch submitted = "if(getState('submitted')) setTimeout(() => setState('submitted', false), 3000)"
 
 style
   .form { max-width: 420px; margin: 40px auto; padding: 32px; background: white; border-radius: 16px }
   .field { margin-bottom: 16px }
-  .field label { display: block; margin-bottom: 6px; font-weight: 600 }
-  .field input { width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 8px }
   button:disabled { opacity: 0.4; cursor: not-allowed }
 
 div.form
@@ -277,7 +340,7 @@ div.form
   div if = "${!submitted}"
     div.field
       label = "Name"
-      input :type = "text" bind = "name"
+      input :type = "text" bind = "name" @keydown.enter = "if(getState('valid')) setState('submitted', true)"
     div.field
       label = "Email"
       input :type = "email" bind = "email"
@@ -285,6 +348,39 @@ div.form
       input :type = "checkbox" bind = "agree"
       span = "I agree"
     button :disabled = "${!valid}" @click = "setState('submitted', true)" = "Submit"
+```
+
+### Dashboard with Tailwind CDN (v6 showcase)
+```jsa
+let dark = false
+let search = ""
+let modal = false
+let toast = ""
+let progress = 68
+let activities = [{name: "Alice", action: "Deployed v2.4", time: "2m ago", type: "success"}, ...]
+const filtered = computed(() => activities.filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase())))
+
+fn toggleDark = "setState('dark', !getState('dark'))"
+fn openModal = "setState('modal', true)"
+fn closeModal = "setState('modal', false)"
+
+style
+  .fade-enter-from { opacity: 0; transform: scale(0.95); }
+  .fade-enter-active { transition: all 0.2s ease-out; }
+  .fade-enter-to { opacity: 1; transform: scale(1); }
+
+div :class = "${dark ? 'bg-gray-950 text-gray-100' : 'bg-gray-50 text-gray-900'} min-h-screen"
+  nav :class = "${dark ? 'bg-gray-900' : 'bg-white'} border-b px-6 h-16 flex items-center justify-between"
+    h1 :class = "text-xl font-bold" = "Dashboard"
+    input :class = "..." bind = "search" @keydown.esc = "setState('search', '')"
+  div :class = "grid grid-cols-1 lg:grid-cols-4 gap-5"
+    div :class = "..." html = "<svg ...>...</svg>"   // SVG icons via html
+  div :class = "..." each = "${filtered}"              // :class + each
+    p = "${item.name}: ${item.action}"
+  div :class = "..." :style = "width: ${progress}%"    // :style dynamic
+  div :class = "..." if = "${modal}" @click.self = "closeModal()"  // event modifiers
+    div transition = "fade"                             // enter transition
+  div if = "${toast}" transition = "slide" = "${toast}" // toast animation
 ```
 
 ### Kanban Board (with on mount)
@@ -358,7 +454,7 @@ jsa-ast *.jsa              # Batch validate
     "watchers": [{ "type": "watcher", "key": "...", "handler": "...", "line": 1 }],
     "hooks": [{ "type": "hook", "phase": "mount|destroy", "handler": "...", "line": 1 }],
     "style": "scoped CSS string or null",
-    "elements": [{ "type": "element", "tag": "div", "each": null, "if": null, "show": null, "bind": null, "attrs": {}, "line": 1 }],
+    "elements": [{ "type": "element", "tag": "div", "each": null, "if": null, "show": null, "bind": null, "html": null, "transition": null, "attrs": {}, "events": {}, "line": 1 }],
     "refs": ["inputName"]
   },
   "errors": [],
@@ -426,6 +522,11 @@ div.list if = "${!loading}"
 8. **Use scoped `style` blocks** — hover states, transitions, media queries
 9. **Immutable array updates** — `[...old, new]`, `.filter()`, `.map()`
 10. **Refs for DOM-only access** — prefer `bind` over refs for input values
+11. **Use `:class` for Tailwind** — merges with static `.classes`
+12. **Use `html` for rich content** — SVG icons, formatted text, badges
+13. **Use event modifiers** — cleaner than `e.preventDefault()` in handler
+14. **Use `transition` with `if`** — enter animations for modals, toasts
+15. **Use `:style` for dynamic values** — progress bars, positioning, transforms
 
 ---
 
@@ -439,12 +540,68 @@ div.list if = "${!loading}"
 | `v-model` | `bind = "key"` | `input bind = "name"` |
 | `v-bind` | `:attr = "val"` | `:disabled = "${!ok}"` |
 | `v-on` | `@event = "code"` | `@click = "inc()"` |
+| `v-html` | `html = "content"` | `div html = "<b>bold</b>"` |
+| `.prevent` | `@event.prevent` | `@submit.prevent = "..."` |
+| `.stop` | `@event.stop` | `@click.stop = "..."` |
+| `.self` | `@event.self` | `@click.self = "close()"` |
+| `.once` | `@event.once` | `@click.once = "init()"` |
+| `key` modifiers | `@event.key` | `@keydown.enter = "..."` |
+| `<Transition>` | `transition = "name"` | `div transition = "fade"` |
 | `ref()` | `let x = 0` | `let count = 0` |
 | `computed()` | `computed(() => ...)` | `const d = computed(...)` |
 | `watch()` | `watch key = "code"` | `watch items = "save()"` |
 | `onMounted()` | `on mount = "code"` | `on mount = "load()"` |
 | `onUnmounted()` | `on destroy = "code"` | `on destroy = "cleanup()"` |
 | `<style scoped>` | `style` block | `style\n  .x { ... }` |
+
+---
+
+## Common Patterns (v6)
+
+### Tailwind + Dark Mode
+```jsa
+let dark = false
+fn toggle = "setState('dark', !getState('dark'))"
+
+div :class = "${dark ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'} min-h-screen transition-colors"
+  button :class = "${dark ? 'bg-gray-800' : 'bg-gray-100'} p-2 rounded-lg" @click = "toggle()" = "${dark ? '☀️' : '🌙'}"
+```
+
+### Modal with Transition + Backdrop Click
+```jsa
+let open = false
+style
+  .fade-enter-from { opacity: 0; transform: scale(0.95); }
+  .fade-enter-active { transition: all 0.2s ease-out; }
+  .fade-enter-to { opacity: 1; transform: scale(1); }
+
+button @click = "setState('open', true)" = "Open"
+div :class = "fixed inset-0 bg-black/50 flex items-center justify-center" if = "${open}" @click.self = "setState('open', false)"
+  div :class = "bg-white rounded-xl p-6" transition = "fade"
+    h2 = "Modal Content"
+    button @click = "setState('open', false)" = "Close"
+```
+
+### Progress Bar with :style
+```jsa
+let pct = 45
+div :class = "bg-gray-200 rounded-full h-3 overflow-hidden"
+  div :class = "bg-blue-500 h-full rounded-full transition-all" :style = "width: ${pct}%"
+```
+
+### SVG Icons via html
+```jsa
+span html = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' class='w-5 h-5'><path d='M5 13l4 4L19 7'/></svg>"
+```
+
+### Form with Enter Key
+```jsa
+let query = ""
+fn search = "console.log('Searching:', getState('query'))"
+
+input bind = "query" @keydown.enter = "search()" @keydown.esc = "setState('query', '')"
+button @click = "search()" = "Search"
+```
 
 ---
 

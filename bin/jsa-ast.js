@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * JSA AST CLI v5 - Parse and validate .jsa files
+ * JSA AST CLI v6 - Parse and validate .jsa files
  * Usage: jsa-ast <file.jsa> [--json] [--tree] [--quiet]
  */
 
@@ -65,7 +65,6 @@ class JSAParser {
         const t = line.trim();
         if (t.startsWith('//')) { i++; continue; }
 
-        // let name = value
         if (t.startsWith('let ')) {
           const m = t.match(/let\s+(\w+)\s*=\s*(.+)/);
           if (m) {
@@ -76,7 +75,6 @@ class JSAParser {
           i++; continue;
         }
 
-        // const name = computed(() => expr)
         if (t.startsWith('const ') && t.includes('computed')) {
           const m = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*(.+)\s*\)/);
           if (m) {
@@ -87,7 +85,6 @@ class JSAParser {
           i++; continue;
         }
 
-        // fn name = "code"
         if (t.startsWith('fn ')) {
           const m = t.match(/fn\s+(\w+)\s*=\s*"([^"]+)"/);
           if (m) {
@@ -98,7 +95,6 @@ class JSAParser {
           i++; continue;
         }
 
-        // watch key = "code"
         if (t.startsWith('watch ')) {
           const m = t.match(/watch\s+(\w+)\s*=\s*"([^"]+)"/);
           if (m) {
@@ -109,7 +105,6 @@ class JSAParser {
           i++; continue;
         }
 
-        // on mount|destroy = "code"
         if (t.startsWith('on ')) {
           const m = t.match(/on\s+(mount|destroy)\s*=\s*"([^"]+)"/);
           if (m) {
@@ -125,7 +120,6 @@ class JSAParser {
           i++; continue;
         }
 
-        // style = "css" or style (indented block)
         if (t === 'style' || t.startsWith('style ')) {
           if (t === 'style') {
             let css = '', j = i + 1;
@@ -143,7 +137,6 @@ class JSAParser {
           if (m) { style += m[1]; i++; continue; }
         }
 
-        // Element
         const elem = this.parseElement(t, i + 1);
         if (elem) {
           nodes.push(elem);
@@ -175,16 +168,15 @@ class JSAParser {
       type: 'element', tag: 'div', id: null, classes: [], styles: {},
       events: {}, attrs: {}, content: null, ref: null,
       each: null, if: null, show: null, bind: null,
+      html: null, transition: null,
       line: lineNum, children: []
     };
 
     let r = t;
 
-    // $ref
     const rm = r.match(/^\$([a-zA-Z0-9_-]+)/);
     if (rm) { elem.ref = rm[1]; r = r.slice(rm[0].length).trim(); }
 
-    // tag#id.class (supports h1, h2, p, br, etc.)
     const tm = r.match(/^([a-z][a-z0-9]*)?(?:#([a-zA-Z0-9_-]+))?(?:\.([a-zA-Z0-9_.-]+))?/);
     if (tm) {
       if (tm[1]) elem.tag = tm[1];
@@ -193,7 +185,6 @@ class JSAParser {
       r = r.slice(tm[0].length).trim();
     }
 
-    // { inline styles }
     const sm = r.match(/^\{([^}]+)\}/);
     if (sm) {
       sm[1].split(';').forEach(p => {
@@ -205,35 +196,34 @@ class JSAParser {
       r = r.slice(sm[0].length).trim();
     }
 
-    // if = "${expr}"
     const ifM = r.match(/\bif\s*=\s*"\$\{([^}]+)\}"/);
     if (ifM) { elem.if = ifM[1]; r = r.replace(ifM[0], '').trim(); }
 
-    // show = "${expr}"
     const showM = r.match(/\bshow\s*=\s*"\$\{([^}]+)\}"/);
     if (showM) { elem.show = showM[1]; r = r.replace(showM[0], '').trim(); }
 
-    // each = "${expr}"
     const eachM = r.match(/\beach\s*=\s*"\$\{([^}]+)\}"/);
     if (eachM) { elem.each = eachM[1]; r = r.replace(eachM[0], '').trim(); }
 
-    // bind = "stateKey"
+    const transM = r.match(/\btransition\s*=\s*"(\w[\w-]*)"/);
+    if (transM) { elem.transition = transM[1]; r = r.replace(transM[0], '').trim(); }
+
     const bindM = r.match(/\bbind\s*=\s*"(\w+)"/);
     if (bindM) { elem.bind = bindM[1]; r = r.replace(bindM[0], '').trim(); }
 
-    // :attr = "value"
+    const htmlM = r.match(/\bhtml\s*=\s*"([^"]*)"/);
+    if (htmlM) { elem.html = htmlM[1]; r = r.replace(htmlM[0], '').trim(); }
+
     const attrRe = /:([a-zA-Z][\w-]*)\s*=\s*"([^"]+)"/g;
     let am;
     while ((am = attrRe.exec(r)) !== null) elem.attrs[am[1]] = am[2];
     r = r.replace(/:[\w-]+\s*=\s*"[^"]+"/g, '').trim();
 
-    // @event = "handler"
-    const er = /@(\w+)\s*=\s*"([^"]+)"/g;
+    const er = /@(\w+(?:\.\w+)*)\s*=\s*"([^"]+)"/g;
     let em;
     while ((em = er.exec(r)) !== null) elem.events[em[1]] = em[2];
-    r = r.replace(/@\w+\s*=\s*"[^"]+"/g, '').trim();
+    r = r.replace(/@\w+(?:\.\w+)*\s*=\s*"[^"]+"/g, '').trim();
 
-    // = "content"
     const cm = r.match(/^=\s*"([^"]*)"/);
     if (cm) elem.content = cm[1];
 
@@ -284,10 +274,22 @@ class JSAParser {
       }
     }
 
+    const validMods = new Set(['prevent', 'stop', 'self', 'once', 'enter', 'esc', 'tab', 'space', 'delete', 'up', 'down', 'left', 'right']);
     const walkElements = (nodes) => {
       for (const el of nodes) {
         if (el.bind && !stateNames.has(el.bind)) {
           this.warnings.push({ line: el.line, message: `Bind key "${el.bind}" not found in state` });
+        }
+        if (el.html !== null && el.content !== null) {
+          this.warnings.push({ line: el.line, message: 'Element has both html and content — html takes precedence' });
+        }
+        for (const evName of Object.keys(el.events)) {
+          const parts = evName.split('.');
+          for (let i = 1; i < parts.length; i++) {
+            if (!validMods.has(parts[i])) {
+              this.warnings.push({ line: el.line, message: `Unknown event modifier "${parts[i]}" on @${parts[0]}` });
+            }
+          }
         }
         if (el.children) walkElements(el.children);
       }
@@ -309,7 +311,7 @@ const files = args.filter(a => !a.startsWith('--'));
 
 if (flags.help || files.length === 0) {
   console.log(`
-JSA AST Parser v5 - Validate .jsa syntax
+JSA AST Parser v6 - Validate .jsa syntax
 
 Usage: jsa-ast <file.jsa> [options]
 
@@ -361,7 +363,7 @@ for (const filePath of files) {
         if (result.ast.refs.length) parts.push(`R:${result.ast.refs.length}`);
 
         if (files.length === 1) {
-          console.log(`\n✅ ${filePath} is valid JSA v5 syntax`);
+          console.log(`\n✅ ${filePath} is valid JSA v6 syntax`);
           console.log(`   ${parts.join(', ')}`);
         } else {
           console.log(`✅ ${filePath} — ${parts.join(', ')}`);

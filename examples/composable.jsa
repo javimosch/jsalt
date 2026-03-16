@@ -10,6 +10,6 @@ div#counter { display: flex; flex-direction: column; align-items: center; paddin
   h1 = "Composable-style Counter"
   div.display { font-size: 32px; font-weight: bold; color: #3b82f6; padding: 20px } = "${count} (x2: ${doubled})"
   div.buttons { display: flex; gap: 12px }
-    button @click = "dec()" = "−"
-    button @click = "rst()" = "Reset"
-    button @click = "inc()" = "+"
+    button { background: #ef4444; color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 20px; cursor: pointer } @click = "dec()" = "−"
+    button { background: #6b7280; color: white; border: none; padding: 14px 24px; border-radius: 10px; font-size: 16px; cursor: pointer } @click = "rst()" = "Reset"
+    button { background: #22c55e; color: white; border: none; padding: 14px 28px; border-radius: 10px; font-size: 20px; cursor: pointer } @click = "inc()" = "+"
