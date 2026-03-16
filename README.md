@@ -17,14 +17,13 @@ npm install jsa-framework
 ```js
 import { JSA, mount, load } from 'jsa-framework';
 
-// Mount template
 mount('#app', `
   let count = 0
-  div = "${count}"
+  div = "Count: ${count}"
   button @click = "setState('count', getState('count') + 1)" = "+"
 `);
 
-// Or load .jsa file
+// Or load a .jsa file
 load('counter.jsa', '#app');
 ```
 
@@ -39,63 +38,64 @@ load('counter.jsa', '#app');
 
 ## Examples
 
-Run the demo:
 ```bash
 npm run demo
 # Open http://localhost:3000
 ```
 
-**Examples included:**
-- `examples/counter.jsa` — Basic counter (15 lines)
-- `examples/calculator.jsa` — Full calculator (44 lines)
-- `examples/kanban.jsa` — Kanban board with composition + localStorage (80 lines)
-- `examples/store.jsa` — Todo list (12 lines)
-- `examples/composable.jsa` — Reusable logic (15 lines)
+**Included:**
+- `examples/counter.jsa` — Basic counter with computed values
+- `examples/calculator.jsa` — Full calculator (grid layout)
+- `examples/kanban.jsa` — Kanban board (each loops, localStorage, lifecycle)
+- `examples/store.jsa` — Todo list (bind, each, conditionals)
+- `examples/form.jsa` — Form demo (bind, :attrs, if/show, watch, scoped CSS)
+- `examples/composable.jsa` — Reusable function pattern
 
 ---
 
 ## Syntax
 
 ```jsa
-// State
+// State & Computed
 let count = 0
+let items = []
 const doubled = computed(() => count * 2)
 
 // Functions
 fn inc = "setState('count', getState('count') + 1)"
 
-// UI
+// Watchers & Lifecycle
+watch count = "console.log('count changed')"
+on mount = "console.log('ready')"
+
+// Scoped CSS
+style
+  .card { background: white; border-radius: 8px }
+  .card:hover { transform: translateY(-2px) }
+
+// UI with conditionals, loops, binding, dynamic attrs
 div#app { display: flex }
   h1 = "Count: ${count}"
+  div.list if = "${items.length > 0}"
+    div.item each = "${items}" = "${item.text}"
   button @click = "inc()" = "+"
 ```
 
 ---
 
-## AST CLI
+## v5 Features
 
-Validate `.jsa` syntax for AI agents:
-
-```bash
-# Install globally
-npm install -g jsa-framework
-
-# Validate a file
-jsa-ast counter.jsa
-
-# Output as JSON (for AI parsing)
-jsa-ast counter.jsa --json
-
-# Output as tree
-jsa-ast counter.jsa --tree
-
-# Quiet mode (errors only)
-jsa-ast counter.jsa --quiet
-```
-
-**Exit codes:**
-- `0` - Valid syntax
-- `1` - Syntax errors found
+| Feature | Syntax | Vue 3 Equivalent |
+|---------|--------|-------------------|
+| Conditional | `if = "${expr}"` | `v-if` |
+| Toggle | `show = "${expr}"` | `v-show` |
+| Loop | `each = "${array}"` | `v-for` |
+| Binding | `bind = "key"` | `v-model` |
+| Attrs | `:disabled = "${!ok}"` | `v-bind` |
+| Watch | `watch key = "code"` | `watch()` |
+| Mount | `on mount = "code"` | `onMounted()` |
+| Destroy | `on destroy = "code"` | `onUnmounted()` |
+| Scoped CSS | `style` block | `<style scoped>` |
 
 ---
 
@@ -107,6 +107,22 @@ jsa-ast counter.jsa --quiet
 | `getState(key)` | Get current value |
 | `refs.name` | DOM element reference |
 | `update()` | Force re-render |
+| `item` / `idx` | Current item/index in `each` loop |
+
+---
+
+## AST CLI
+
+Validate `.jsa` syntax for AI agents:
+
+```bash
+jsa-ast counter.jsa           # Validate
+jsa-ast counter.jsa --json    # JSON AST
+jsa-ast counter.jsa --tree    # Tree view
+jsa-ast *.jsa                 # Batch validate
+```
+
+**Exit codes:** `0` = valid, `1` = errors
 
 ---
 
@@ -114,30 +130,20 @@ jsa-ast counter.jsa --quiet
 
 ```
 jsa-framework/
-├── jsa-runtime.js       # Core runtime (published to npm)
+├── jsa-runtime.js       # Core runtime (~280 lines, published)
+├── bin/jsa-ast.js       # AST CLI (published)
 ├── package.json         # NPM config
-├── README.md            # This file
+├── README.md            # This file (published)
 ├── examples/            # Demo apps (not published)
 │   ├── index.html
 │   ├── counter.jsa
 │   ├── calculator.jsa
+│   ├── kanban.jsa
 │   ├── store.jsa
+│   ├── form.jsa
 │   └── composable.jsa
 └── .agents/             # AI agent skills (not published)
-    └── skills/
-        └── jsalt-usage/
-            └── SKILL.md
 ```
-
----
-
-## NPM Package
-
-Only these files are published:
-- `jsa-runtime.js` — Core runtime (~8KB)
-- `README.md` — Documentation
-
-Examples and skill docs are **not** included in the npm package.
 
 ---
 
