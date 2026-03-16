@@ -187,7 +187,7 @@ on destroy = "console.log('Cleaning up')"
 - Multiple hooks of same type allowed
 - Mount hooks run via `setTimeout(0)` so DOM is painted
 
-### 14. Raw HTML — `html`
+### 13. Raw HTML — `html`
 ```jsa
 div html = "<svg viewBox='0 0 24 24'><path d='M12 2L2 22h20z'/></svg>"
 p html = "Bold <strong>text</strong> and <em>italic</em>"
@@ -198,7 +198,7 @@ span html = "${item.up ? '↑' : '↓'} ${item.value}%"
 - Use single quotes for HTML attributes inside double-quoted value
 - If both `html` and `= "content"` present, `html` takes precedence
 
-### 15. Event Modifiers
+### 14. Event Modifiers
 ```jsa
 button @click.prevent = "submit()"
 input @keydown.enter = "search()"
@@ -215,7 +215,7 @@ div @click.self = "closeModal()"
 - Key modifiers: `.enter`, `.esc`, `.tab`, `.space`, `.delete`, `.up`, `.down`, `.left`, `.right`
 - Chain multiple: `@keydown.enter.prevent = "submit()"`
 
-### 16. Enter Transitions
+### 15. Enter Transitions
 ```jsa
 div.card transition = "fade"
 div.toast transition = "slide"
@@ -231,8 +231,9 @@ style
 ```
 - Works great with `if` for show/hide animations
 - Pairs naturally with Tailwind CDN for utility-based transitions
+- Transitions only play on initial render, not on state updates
 
-### 17. Scoped CSS — `style`
+### 16. Scoped CSS — `style`
 ```jsa
 style
   .card { background: white; border-radius: 8px; padding: 16px }
