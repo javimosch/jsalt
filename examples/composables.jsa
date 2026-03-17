@@ -1,0 +1,25 @@
+// JSA Composables - Reusable Logic
+// Features: useStorage, useToggle, useCounter, useModal
+
+// ============ STORAGE COMPOSABLE ============
+fn createStorage = "const key = 'jsa-' + Math.random().toString(36).slice(2,7); return { key, get: () => JSON.parse(localStorage.getItem(key) || 'null'), set: (v) => localStorage.setItem(key, JSON.stringify(v)) }"
+
+// ============ TOGGLE COMPOSABLE ============
+fn createToggle = "const initial = false; return { value: initial, toggle: () => { initial = !initial; return initial; }, set: (v) => { initial = v; return v; } }"
+
+// ============ COUNTER COMPOSABLE ============
+fn createCounter = "let val = 0; return { value: val, inc: (by=1) => { val += by; return val; }, dec: (by=1) => { val -= by; return val; }, set: (v) => { val = v; return v; }, reset: () => { val = 0; return 0; } }"
+
+// ============ MODAL COMPOSABLE ============
+fn createModal = "let isOpen = false; let content = ''; return { isOpen, open: (c='') => { isOpen = true; content = c; return true; }, close: () => { isOpen = false; content = ''; return false; }, toggle: () => { isOpen = !isOpen; return isOpen; }, content }"
+
+// ============ FORM COMPOSABLE ============
+fn createForm = "let data = {}; let errors = {}; let isValid = true; return { data, errors, isValid, setField: (k,v) => { data[k] = v; return data; }, setError: (k,e) => { errors[k] = e; isValid = Object.keys(errors).length === 0; return errors; }, validate: (rules) => { errors = {}; for(const [k,rule] of Object.entries(rules)) { if(rule.required && !data[k]) errors[k] = 'Required'; if(rule.email && data[k] && !data[k].includes('@')) errors[k] = 'Invalid email'; } isValid = Object.keys(errors).length === 0; return errors; }, reset: () => { data = {}; errors = {}; isValid = true; return data; } }"
+
+// ============ NOTIFICATION COMPOSABLE ============
+fn createNotifier = "let notifications = []; return { notifications, add: (msg, type='info') => { const n = { id: Date.now(), msg, type }; notifications = [...notifications, n]; setTimeout(() => { notifications = notifications.filter(x => x.id !== n.id); }, 3000); return notifications; }, remove: (id) => { notifications = notifications.filter(n => n.id !== id); return notifications; }, clear: () => { notifications = []; return notifications; } }"
+
+// ============ UTILITY FUNCTIONS ============
+fn formatDate = "const d = new Date(); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})"
+fn generateId = "return Date.now().toString(36) + Math.random().toString(36).slice(2,5)"
+fn debounce = "let t; return (fn, ms) => { clearTimeout(t); t = setTimeout(fn, ms); }"
