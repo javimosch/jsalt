@@ -102,14 +102,6 @@ export class JSA {
   _rebuild() {
     if (!this.template) return;
     const oldState = { ...this.state };
-    const active = document.activeElement;
-    const bindKey = active?.dataset?.jsaBind;
-    const selStart = active?.selectionStart;
-    const selEnd = active?.selectionEnd;
-
-    this.container.innerHTML = '';
-    this.refs = {};
-    if (this._scopeId) this.container.setAttribute('data-jsa-' + this._scopeId, '');
 
     const lines = this.template.split('\n').filter(l => l.trim() && !l.trim().startsWith('//'));
     const parsed = this.parse(lines, 0);
@@ -121,16 +113,96 @@ export class JSA {
     }
 
     this.recompute();
-    this.build(parsed.nodes, this.container, {});
 
-    if (bindKey) {
-      const el = this.container.querySelector(`[data-jsa-bind="${bindKey}"]`);
-      if (el) {
-        el.focus();
-        if (selStart != null && el.setSelectionRange) {
-          try { el.setSelectionRange(selStart, selEnd); } catch (e) {}
+    const offscreen = document.createElement('div');
+    if (this._scopeId) offscreen.setAttribute('data-jsa-' + this._scopeId, '');
+
+    this.refs = {};
+    this.build(parsed.nodes, offscreen, {});
+
+    this._patch(this.container, offscreen);
+  }
+
+  _patch(oldParent, newParent) {
+    const oldChildren = Array.from(oldParent.childNodes);
+    const newChildren = Array.from(newParent.childNodes);
+    const max = Math.max(oldChildren.length, newChildren.length);
+    
+    for (let i = 0; i < max; i++) {
+      const o = oldChildren[i];
+      const n = newChildren[i];
+      
+      if (!o) {
+        oldParent.appendChild(n);
+        this._triggerTransition(n);
+      } else if (!n) {
+        oldParent.removeChild(o);
+      } else if (o.nodeType === Node.TEXT_NODE && n.nodeType === Node.TEXT_NODE) {
+        if (o.textContent !== n.textContent) o.textContent = n.textContent;
+      } else if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName) {
+        oldParent.replaceChild(n, o);
+        this._triggerTransition(n);
+      } else {
+        if (o.id !== n.id) o.id = n.id;
+        
+        // Use setAttribute for classes to avoid className read-only errors (SVG/SES)
+        const nCls = n.getAttribute('class');
+        if (o.getAttribute('class') !== nCls) {
+          if (nCls !== null) o.setAttribute('class', nCls);
+          else o.removeAttribute('class');
         }
+        
+        const oAttrs = o.attributes;
+        const nAttrs = n.attributes;
+        if (oAttrs && nAttrs) {
+            for (let j = oAttrs.length - 1; j >= 0; j--) {
+              const name = oAttrs[j].name;
+              if (name === 'class') continue;
+              if (!n.hasAttribute(name)) o.removeAttribute(name);
+            }
+            for (let j = 0; j < nAttrs.length; j++) {
+              const name = nAttrs[j].name;
+              if (name === 'class') continue;
+              const value = nAttrs[j].value;
+              if (o.getAttribute(name) !== value) o.setAttribute(name, value);
+            }
+        }
+        
+        if (o.style.cssText !== n.style.cssText) o.style.cssText = n.style.cssText;
+        if ('value' in o && o.value !== n.value) o.value = n.value;
+        if ('checked' in o && o.checked !== n.checked) o.checked = n.checked;
+        
+        o._jsaCtx = n._jsaCtx;
+        o._jsaNode = n._jsaNode;
+        
+        for (const [key, refEl] of Object.entries(this.refs)) {
+          if (refEl === n) this.refs[key] = o;
+        }
+        
+        this._patch(o, n);
       }
+    }
+  }
+
+  _triggerTransition(el) {
+    if (el.nodeType !== Node.ELEMENT_NODE) return;
+    const n = el._jsaNode;
+    if (n && n.transition && !this._transitioned.has(el)) {
+      const name = n.transition;
+      this._transitioned.add(el);
+      el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          el.classList.remove(`${name}-enter-from`);
+          el.classList.add(`${name}-enter-to`);
+          const done = () => {
+            el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
+            el.removeEventListener('transitionend', done);
+          };
+          el.addEventListener('transitionend', done);
+          setTimeout(done, 1000);
+        });
+      });
     }
   }
 
@@ -332,6 +404,8 @@ export class JSA {
 
   buildInstance(n, parent, ctx) {
     const el = document.createElement(n.tag);
+    el._jsaCtx = ctx;
+    el._jsaNode = n;
     if (n.id) el.id = n.id;
     n.classes.forEach(c => el.classList.add(c));
     Object.assign(el.style, n.styles);
@@ -399,33 +473,12 @@ export class JSA {
         for (const [m, key] of Object.entries(keyMap)) {
           if (mods.has(m) && e.key !== key) return;
         }
-        this.execHandler(h, e, el, loopCtx);
+        this.execHandler(h, e, el, el._jsaCtx || loopCtx);
       }, { once: mods.has('once') });
     }
 
     if (n.children) this.build(n.children, el, ctx);
     parent.appendChild(el);
-
-    // Transitions - only on initial render, not on rebuilds
-    if (n.transition && !this._transitioned.has(el)) {
-      const name = n.transition;
-      this._transitioned.add(el);
-      el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          el.classList.remove(`${name}-enter-from`);
-          el.classList.add(`${name}-enter-to`);
-          const done = () => {
-            el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
-            el.removeEventListener('transitionend', done);
-            clearTimeout(timeoutId);
-          };
-          el.addEventListener('transitionend', done);
-          // Timeout fallback in case transitionend never fires
-          const timeoutId = setTimeout(done, 1000);
-        });
-      });
-    }
   }
 
   evaluate(expr, ctx) {
@@ -467,7 +520,7 @@ export class JSA {
       ).join('\n');
       const fn = new Function('state', 'refs', 'el', 'e', 'setState', 'getState', 'update', 'item', 'idx', `
         ${fnDefs}
-        with(state) { ${code} }
+        with(state) { (function() { ${code} })(); }
       `);
       fn(
         this.state, this.refs, el, e,
