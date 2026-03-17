@@ -1,0 +1,49 @@
+// Task List Component - JSA
+// Features: List rendering, filtering, conditional rendering, dynamic classes
+
+let tasks = [{ id: 1, title: "Design mockups", status: "done", priority: "high", assignee: "Alice" }, { id: 2, title: "API integration", status: "in-progress", priority: "high", assignee: "Bob" }, { id: 3, title: "Write tests", status: "pending", priority: "medium", assignee: "Carol" }, { id: 4, title: "Documentation", status: "pending", priority: "low", assignee: "Dan" }, { id: 5, title: "Code review", status: "in-progress", priority: "medium", assignee: "Eve" }]
+let filter = "all"
+let searchTerm = ""
+
+const filteredTasks = computed(() => {
+  let result = getState('tasks');
+  const f = getState('filter');
+  if (f !== 'all') result = result.filter(t => t.status === f);
+  const s = getState('searchTerm').toLowerCase();
+  if (s) result = result.filter(t => t.title.toLowerCase().includes(s));
+  return result;
+})
+
+fn setFilter = "setState('filter', '${1}')"
+fn toggleTask = "const id = ${1}; const tasks = getState('tasks').map(t => t.id === id ? {...t, status: t.status === 'done' ? 'pending' : 'done'} : t); setState('tasks', tasks)"
+fn deleteTask = "const id = ${1}; setState('tasks', getState('tasks').filter(t => t.id !== id))"
+fn getPriorityColor = "const p = '${1}'; return p === 'high' ? 'text-red-500 bg-red-50' : p === 'medium' ? 'text-yellow-500 bg-yellow-50' : 'text-green-500 bg-green-50'"
+
+style
+  .task-enter-from { opacity: 0; transform: translateX(-20px); }
+  .task-enter-active { transition: all 0.2s ease-out; }
+  .task-enter-to { opacity: 1; transform: translateX(0); }
+  .task-leave-to { opacity: 0; transform: translateX(20px); }
+
+div.task-list :class = "bg-white rounded-xl border border-gray-200 p-5"
+  div.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px }
+    h3 :class = "text-lg font-semibold text-gray-900" = "Tasks"
+    span :class = "text-sm text-gray-500" = "${filteredTasks.length} tasks"
+  
+  div.controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap }
+    input :class = "flex-1 min-w-[200px] border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" :type = "text" :placeholder = "Search tasks..." bind = "searchTerm"
+    button :class = "${filter === 'all' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg text-sm font-medium transition-colors" @click = "setFilter('all')" = "All"
+    button :class = "${filter === 'pending' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg text-sm font-medium transition-colors" @click = "setFilter('pending')" = "Pending"
+    button :class = "${filter === 'in-progress' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg text-sm font-medium transition-colors" @click = "setFilter('in-progress')" = "In Progress"
+    button :class = "${filter === 'done' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 rounded-lg text-sm font-medium transition-colors" @click = "setFilter('done')" = "Done"
+  
+  div.tasks :class = "space-y-3"
+    div.task :class = "flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors task" each = "${filteredTasks}" transition = "task"
+      input :type = "checkbox" :class = "w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 cursor-pointer" :checked = "${item.status === 'done'}" @click = "toggleTask(item.id)"
+      div :class = "flex-1 min-w-0"
+        p :class = "${item.status === 'done' ? 'line-through text-gray-400' : 'text-gray-900'} font-medium truncate" = "${item.title}"
+        p :class = "text-xs text-gray-500 mt-1" = "Assigned to ${item.assignee}"
+      span :class = "${getPriorityColor(item.priority)} text-xs px-3 py-1 rounded-full font-medium capitalize" = "${item.priority}"
+      button :class = "text-gray-400 hover:text-red-500 transition-colors p-2" @click = "deleteTask(item.id)" = "×"
+    
+    p :class = "text-center text-gray-500 py-8" if = "${filteredTasks.length === 0}" = "No tasks found"

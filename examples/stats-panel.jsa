@@ -1,0 +1,79 @@
+// Stats Panel Component - JSA
+// Features: Dynamic styling, computed values, conditional rendering
+
+let stats = { totalProjects: 24, activeProjects: 18, completedTasks: 156, pendingTasks: 43, teamMembers: 12, revenue: 48200 }
+let period = "month"
+
+const growthRate = computed(() => {
+  const p = getState('period');
+  return p === 'week' ? 12.5 : p === 'month' ? 8.1 : 24.3;
+})
+
+const completionRate = computed(() => {
+  const s = getState('stats');
+  return Math.round((s.completedTasks / (s.completedTasks + s.pendingTasks)) * 100);
+})
+
+fn setPeriod = "setState('period', '${1}')"
+fn formatCurrency = "return '$' + ${1}.toLocaleString()"
+fn getTrendIcon = "return ${1} >= 0 ? '↑' : '↓'"
+fn getTrendColor = "return ${1} >= 0 ? 'text-green-500' : 'text-red-500'"
+
+style
+  .stat-card { transition: all 0.3s ease; }
+  .stat-card:hover { transform: translateY(-4px); }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+div.stats-panel :class = "bg-white rounded-xl border border-gray-200 p-5"
+  div.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px }
+    h3 :class = "text-lg font-semibold text-gray-900" = "Performance Stats"
+    div :class = "flex gap-2"
+      button :class = "${period === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" @click = "setPeriod('week')" = "Week"
+      button :class = "${period === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" @click = "setPeriod('month')" = "Month"
+      button :class = "${period === 'year' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" @click = "setPeriod('year')" = "Year"
+  
+  div.grid :class = "grid grid-cols-2 lg:grid-cols-3 gap-4"
+    div.stat-card :class = "bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl" = "📊"
+        div
+          p :class = "text-2xl font-bold text-blue-900" = "${stats.totalProjects}"
+          p :class = "text-xs text-blue-700" = "Total Projects"
+    div.stat-card :class = "bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl" = "✅"
+        div
+          p :class = "text-2xl font-bold text-green-900" = "${stats.completedTasks}"
+          p :class = "text-xs text-green-700" = "Completed Tasks"
+    div.stat-card :class = "bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl" = "👥"
+        div
+          p :class = "text-2xl font-bold text-purple-900" = "${stats.teamMembers}"
+          p :class = "text-xs text-purple-700" = "Team Members"
+    div.stat-card :class = "bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl" = "⏳"
+        div
+          p :class = "text-2xl font-bold text-orange-900" = "${stats.pendingTasks}"
+          p :class = "text-xs text-orange-700" = "Pending Tasks"
+    div.stat-card :class = "bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl" = "💰"
+        div
+          p :class = "text-2xl font-bold text-pink-900" = "${formatCurrency(stats.revenue)}"
+          p :class = "text-xs text-pink-700" = "Revenue"
+    div.stat-card :class = "bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-4 stat-card"
+      div :class = "flex items-center gap-3"
+        span :class = "text-3xl pulse" = "📈"
+        div
+          p :class = "text-2xl font-bold text-indigo-900" = "${completionRate}%"
+          p :class = "text-xs text-indigo-700" = "Completion Rate"
+  
+  div.trend :class = "mt-6 p-4 bg-gray-50 rounded-xl"
+    div :class = "flex items-center justify-between"
+      span :class = "text-sm text-gray-600" = "Growth vs last ${period}"
+      span :class = "${getTrendColor(growthRate)} text-sm font-bold flex items-center gap-1" = "${getTrendIcon(growthRate)} ${growthRate}%"
+    div :class = "w-full bg-gray-200 rounded-full h-2 mt-3 overflow-hidden"
+      div :class = "bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-1000" :style = "width: ${Math.min(100, growthRate * 4)}%"

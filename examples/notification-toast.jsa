@@ -1,0 +1,30 @@
+// Notification Toast Component - JSA
+// Features: Transitions, list rendering, auto-dismiss, dynamic styling
+
+let notifications = [{ id: 1, message: "Project created successfully!", type: "success" }, { id: 2, message: "New task assigned to you", type: "info" }, { id: 3, message: "Build failed on main branch", type: "error" }]
+
+fn addNotification = "const msg = '${1}'; const type = '${2}'; const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: msg, type }]); setTimeout(() => removeNotification(id), 3000)"
+fn removeNotification = "const id = ${1}; setState('notifications', getState('notifications').filter(n => n.id !== id))"
+fn clearAll = "setState('notifications', [])"
+fn getTypeIcon = "const t = '${1}'; return t === 'success' ? '✓' : t === 'error' ? '✕' : 'ℹ'"
+fn getTypeColor = "const t = '${1}'; return t === 'success' ? 'bg-green-500' : t === 'error' ? 'bg-red-500' : 'bg-blue-500'"
+
+style
+  .toast-enter-from { opacity: 0; transform: translateX(100%); }
+  .toast-enter-active { transition: all 0.3s ease-out; }
+  .toast-enter-to { opacity: 1; transform: translateX(0); }
+  .toast-leave-from { opacity: 1; transform: translateX(0); }
+  .toast-leave-active { transition: all 0.3s ease-in; }
+  .toast-leave-to { opacity: 0; transform: translateX(100%); }
+  .toast { animation: slideIn 0.3s ease-out; }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+div.notifications :class = "fixed top-4 right-4 z-50 space-y-3 w-80"
+  div :class = "flex justify-between items-center mb-2" if = "${notifications.length > 0}"
+    span :class = "text-sm font-medium text-gray-600" = "${notifications.length} notifications"
+    button :class = "text-xs text-gray-500 hover:text-gray-700" @click = "clearAll()" = "Clear all"
+  
+  div.toast :class = "bg-white rounded-lg shadow-lg border border-gray-200 p-4 flex items-start gap-3 toast" each = "${notifications}" transition = "toast"
+    span :class = "${getTypeColor(item.type)} text-white w-6 h-6 rounded-full flex items-center justify-center text-sm shrink-0" = "${getTypeIcon(item.type)}"
+    p :class = "flex-1 text-sm text-gray-900" = "${item.message}"
+    button :class = "text-gray-400 hover:text-gray-600 transition-colors" @click = "removeNotification(item.id)" = "×"

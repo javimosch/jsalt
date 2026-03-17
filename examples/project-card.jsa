@@ -1,0 +1,52 @@
+// Project Card Component - JSA
+// Features: Component composition, dynamic classes, events, transitions
+
+let project = { id: 1, name: "Website Redesign", status: "active", progress: 75, team: 5, deadline: "2025-04-15" }
+let expanded = false
+
+fn toggleExpand = "setState('expanded', !getState('expanded'))"
+fn getStatusColor = "const s = getState('project').status; return s === 'active' ? 'bg-green-500' : s === 'paused' ? 'bg-yellow-500' : 'bg-gray-500'"
+fn getProgressColor = "const p = getState('project').progress; return p >= 80 ? 'bg-green-500' : p >= 50 ? 'bg-blue-500' : 'bg-yellow-500'"
+
+style
+  .card-enter-from { opacity: 0; transform: translateY(20px); }
+  .card-enter-active { transition: all 0.3s ease-out; }
+  .card-enter-to { opacity: 1; transform: translateY(0); }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.1); }
+
+div.project-card :class = "bg-white rounded-xl border border-gray-200 p-5 cursor-pointer transition-all duration-300 card" @click = "toggleExpand()" transition = "card"
+  div.header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px }
+    div
+      h3 :class = "text-lg font-semibold text-gray-900" = "${project.name}"
+      p :class = "text-sm text-gray-500 mt-1" = "Due: ${project.deadline}"
+    span :class = "${getStatusColor()} text-white text-xs px-3 py-1 rounded-full font-medium capitalize" = "${project.status}"
+  
+  div.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px }
+    div.metric { text-align: center }
+      p :class = "text-2xl font-bold text-gray-900" = "${project.progress}%"
+      p :class = "text-xs text-gray-500" = "Progress"
+    div.metric { text-align: center }
+      p :class = "text-2xl font-bold text-gray-900" = "${project.team}"
+      p :class = "text-xs text-gray-500" = "Team"
+    div.metric { text-align: center }
+      p :class = "text-2xl font-bold text-gray-900" = "12"
+      p :class = "text-xs text-gray-500" = "Tasks"
+  
+  div.progress-bar :class = "w-full bg-gray-200 rounded-full h-2 mb-4 overflow-hidden"
+    div.progress-fill :class = "${getProgressColor()} h-full rounded-full transition-all duration-500" :style = "width: ${project.progress}%"
+  
+  div.details :class = "border-t border-gray-100 pt-4 mt-4" if = "${expanded}" transition = "fade"
+    div :class = "space-y-2"
+      div :class = "flex justify-between text-sm"
+        span :class = "text-gray-500" = "Created"
+        span :class = "text-gray-900 font-medium" = "2025-01-15"
+      div :class = "flex justify-between text-sm"
+        span :class = "text-gray-500" = "Last Updated"
+        span :class = "text-gray-900 font-medium" = "2 hours ago"
+      div :class = "flex justify-between text-sm"
+        span :class = "text-gray-500" = "Priority"
+        span :class = "text-orange-500 font-medium" = "High"
+    
+    div :class = "flex gap-2 mt-4"
+      button :class = "flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors" @click.stop = "alert('Edit project')" = "Edit"
+      button :class = "flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors" @click.stop = "alert('View details')" = "View"

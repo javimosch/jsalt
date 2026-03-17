@@ -1,0 +1,181 @@
+// Main Dashboard - JSA v6 (Responsive + Bug Fixes)
+// Features: Component composition, scoped CSS, lifecycle hooks, watchers, modals, responsive design
+
+let darkMode = false
+let sidebarOpen = false
+let isMobile = false
+let showModal = false
+let modalContent = ""
+let currentUser = { name: "John Doe", avatar: "👨‍💼", role: "Admin" }
+let notifications = []
+
+watch darkMode = "localStorage.setItem('jsa-dark', JSON.stringify(getState('darkMode')))"
+
+on mount = "const saved = localStorage.getItem('jsa-dark'); if(saved) setState('darkMode', JSON.parse(saved)); const w = window.innerWidth; setState('isMobile', w < 1024); setState('sidebarOpen', w >= 1024); window.addEventListener('resize', () => { const nw = window.innerWidth; setState('isMobile', nw < 1024); if(nw >= 1024) setState('sidebarOpen', true); else setState('sidebarOpen', false); }); console.log('Dashboard mounted')"
+on destroy = "console.log('Dashboard destroyed')"
+
+fn toggleDark = "setState('darkMode', !getState('darkMode'))"
+fn toggleSidebar = "setState('sidebarOpen', !getState('sidebarOpen'))"
+fn closeSidebar = "if(getState('isMobile')) setState('sidebarOpen', false)"
+fn openModal = "setState('showModal', true); setState('modalContent', 'New Project')"
+fn closeModal = "setState('showModal', false); setState('modalContent', '')"
+fn addNotification = "const msg = 'Action completed'; const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: msg, type: 'info' }]); setTimeout(() => { const notifs = getState('notifications').filter(n => n.id !== id); setState('notifications', notifs); }, 3000)"
+
+style
+  .fade-enter-from { opacity: 0; }
+  .fade-enter-active { transition: opacity 0.2s ease-out; }
+  .fade-enter-to { opacity: 1; }
+  .slide-enter-from { transform: translateX(-100%); }
+  .slide-enter-active { transition: transform 0.3s ease-out; }
+  .slide-enter-to { transform: translateX(0); }
+  .slide-leave-from { transform: translateX(0); }
+  .slide-leave-active { transition: transform 0.3s ease-in; }
+  .slide-leave-to { transform: translateX(-100%); }
+  
+  .sidebar { transition: transform 0.3s ease; }
+  @media (min-width: 1024px) { .sidebar { transform: translateX(0) !important; } }
+  
+  .modal-overlay { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+  .modal-content { animation: modalSlide 0.3s ease-out; }
+  @keyframes modalSlide { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+  
+  .overlay-enter-from { opacity: 0; }
+  .overlay-enter-active { transition: opacity 0.3s ease-out; }
+  .overlay-enter-to { opacity: 1; }
+
+div.dashboard :class = "${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'} min-h-screen transition-colors duration-300"
+  
+  // Mobile Overlay
+  div :class = "fixed inset-0 bg-black/50 z-30 lg:hidden overlay-enter-from overlay-enter-active overlay-enter-to" if = "${sidebarOpen && isMobile}" @click = "setState('sidebarOpen', false)" transition = "overlay"
+  
+  // Sidebar
+  aside.sidebar :class = "fixed top-0 left-0 h-full ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-r z-40 ${isMobile ? (sidebarOpen ? 'w-64' : 'w-0') : (sidebarOpen ? 'w-64' : 'w-20')} overflow-hidden transition-all duration-300"
+    div :class = "p-6 h-full flex flex-col"
+      div :class = "flex items-center justify-between mb-8"
+        div :class = "flex items-center gap-3"
+          div :class = "w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0" html = "<svg viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' class='w-5 h-5'><path d='M13 2L3 14h9l-1 8 10-12h-9l1-8z'/></svg>"
+          h1 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-xl font-bold whitespace-nowrap" if = "${sidebarOpen || !isMobile}" = "JSA Pro"
+        button :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} p-2 rounded-lg lg:hidden" @click = "setState('sidebarOpen', false)" = "✕"
+      
+      nav :class = "flex-1 space-y-2 overflow-y-auto"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Dashboard', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📊 Dashboard"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Projects', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📁 Projects"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Tasks', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "✅ Tasks"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Team', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "👥 Team"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Settings', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "⚙️ Settings"
+      
+      div :class = "border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'} pt-4 mt-4"
+        div :class = "flex items-center gap-3 px-4 py-3"
+          span :class = "text-2xl shrink-0" = "${currentUser.avatar}"
+          div :class = "flex-1 min-w-0" if = "${sidebarOpen || !isMobile}"
+            p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-sm font-medium truncate" = "${currentUser.name}"
+            p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "${currentUser.role}"
+  
+  // Main Content
+  main :class = "${sidebarOpen && !isMobile ? 'ml-64' : (isMobile ? 'ml-0' : 'ml-20')} transition-all duration-300"
+    // Top Bar
+    header :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border-b h-16 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-20"
+      div :class = "flex items-center gap-4"
+        button :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} p-2 rounded-lg transition-colors" @click = "toggleSidebar()" = "☰"
+        h2 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-lg font-semibold hidden sm:block" = "Dashboard"
+      div :class = "flex items-center gap-2 lg:gap-4"
+        button :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} p-2 rounded-lg transition-colors" @click = "toggleDark()" = "${darkMode ? '☀️' : '🌙'}"
+        button :class = "relative"
+          span :class = "text-xl" = "🔔"
+          span :class = "absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center" = "${notifications.length}"
+        button :class = "${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-3 lg:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap" @click = "openModal()" = "+ New"
+    
+    // Page Content
+    div :class = "p-4 lg:p-6 space-y-4 lg:space-y-6"
+      // Welcome Banner
+      div :class = "${darkMode ? 'bg-gradient-to-r from-blue-900 to-purple-900' : 'bg-gradient-to-r from-blue-500 to-purple-600'} rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white"
+        h2 :class = "text-lg lg:text-2xl font-bold mb-2" = "Welcome back, ${currentUser.name}! 👋"
+        p :class = "opacity-90 text-sm lg:text-base" = "You have ${43} pending tasks and ${18} active projects"
+      
+      // Stats Grid - Responsive
+      div :class = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          div :class = "flex items-center justify-between"
+            div
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Total Projects"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "24"
+            span :class = "text-3xl lg:text-4xl" = "📊"
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          div :class = "flex items-center justify-between"
+            div
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Completed"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "156"
+            span :class = "text-3xl lg:text-4xl" = "✅"
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          div :class = "flex items-center justify-between"
+            div
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Team Members"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "12"
+            span :class = "text-3xl lg:text-4xl" = "👥"
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          div :class = "flex items-center justify-between"
+            div
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Pending Tasks"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "43"
+            span :class = "text-3xl lg:text-4xl" = "⏳"
+      
+      // Content Grid - Responsive
+      div :class = "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6"
+        // Project Card
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          h3 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-base lg:text-lg font-semibold mb-4" = "🚀 Featured Project"
+          div :class = "space-y-3 lg:space-y-4"
+            div
+              div :class = "flex justify-between mb-2"
+                span :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm lg:text-base" = "Website Redesign"
+                span :class = "text-green-500 text-xs lg:text-sm" = "Active"
+              div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-200'} rounded-full h-2 lg:h-3 overflow-hidden"
+                div :class = "bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full" :style = "width: 75%"
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs lg:text-sm mt-2" = "75% complete • Due Apr 15"
+            div :class = "flex gap-2"
+              button :class = "flex-1 bg-blue-500 text-white py-2 lg:py-2.5 rounded-lg text-xs lg:text-sm hover:bg-blue-600 transition-colors" @click = "openModal('Edit Project')" = "Edit"
+              button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-2 lg:py-2.5 rounded-lg text-xs lg:text-sm hover:bg-gray-200 transition-colors" @click = "openModal('View Details')" = "View"
+        
+        // Task List
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          h3 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-base lg:text-lg font-semibold mb-4" = "✅ Recent Tasks"
+          div :class = "space-y-2 lg:space-y-3"
+            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
+              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
+              div :class = "flex-1 min-w-0"
+                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm truncate" = "Design mockups"
+                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Alice"
+              span :class = "text-red-500 bg-red-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "High"
+            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
+              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
+              div :class = "flex-1 min-w-0"
+                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm truncate" = "API integration"
+                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Bob"
+              span :class = "text-yellow-500 bg-yellow-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "Medium"
+            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
+              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
+              div :class = "flex-1 min-w-0"
+                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm line-through opacity-50 truncate" = "Documentation"
+                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Carol"
+              span :class = "text-green-500 bg-green-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "Done"
+    
+    // Footer
+    footer :class = "${darkMode ? 'text-gray-500' : 'text-gray-400'} text-center text-xs lg:text-sm py-6" = "Built with JSA Framework v6 • 2025"
+  
+  // Modal - Responsive
+  div :class = "fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" if = "${showModal}" @click.self = "closeModal()"
+    div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white'} rounded-2xl p-6 lg:p-8 max-w-md w-full shadow-2xl" transition = "fade"
+      h2 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-lg lg:text-xl font-bold mb-6" = "${modalContent}"
+      div :class = "space-y-4"
+        input :type = "text" :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Enter title..."
+        textarea :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Enter description..." :rows = "4"
+        div :class = "flex gap-3"
+          button :class = "flex-1 bg-blue-500 text-white py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors" @click = "closeModal()" = "Save"
+          button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors" @click = "closeModal()" = "Cancel"
+  
+  // Notifications - Responsive
+  div :class = "fixed top-4 right-4 z-50 space-y-3 w-full max-w-xs lg:max-w-sm"
+    div :class = "${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-lg p-4 flex items-center gap-3" each = "${notifications}" transition = "toast"
+      span :class = "text-xl" = "ℹ️"
+      p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-sm flex-1" = "${item.message}"
+      button :class = "${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}" @click = "const id = item.id; setState('notifications', getState('notifications').filter(n => n.id !== id))" = "×"
