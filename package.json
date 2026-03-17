@@ -20,7 +20,8 @@
     "start": "cd examples && npx serve .",
     "demo": "cd examples && npx serve .",
     "ast": "node bin/jsa-ast.js",
-    "validate": "node bin/jsa-ast.js examples/*.jsa"
+    "validate": "node bin/jsa-ast.js examples/*.jsa",
+    "test": "node --test tests/"
   },
   "keywords": [
     "jsa",
