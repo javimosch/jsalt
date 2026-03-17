@@ -1,25 +1,47 @@
-// Main Dashboard - JSA v6 (Responsive + Bug Fixes)
-// Features: Component composition, scoped CSS, lifecycle hooks, watchers, modals, responsive design
+// Main Dashboard - JSA v6 (Responsive + CRUD Projects)
+// Features: Component composition, scoped CSS, lifecycle hooks, watchers, modals, responsive design, full CRUD
 
 let darkMode = false
 let sidebarOpen = false
 let isMobile = false
 let showModal = false
+let modalMode = "create"
 let modalContent = ""
 let currentUser = { name: "John Doe", avatar: "👨‍💼", role: "Admin" }
 let notifications = []
 
-watch darkMode = "localStorage.setItem('jsa-dark', JSON.stringify(getState('darkMode')))"
+// Projects State
+let projects = [{ id: 1, name: "Website Redesign", status: "active", progress: 75, team: 5, deadline: "2025-04-15", description: "Complete website overhaul" }, { id: 2, name: "Mobile App", status: "paused", progress: 45, team: 3, deadline: "2025-06-01", description: "iOS and Android app" }, { id: 3, name: "API Integration", status: "done", progress: 100, team: 2, deadline: "2025-03-01", description: "Third-party API connections" }]
 
-on mount = "const saved = localStorage.getItem('jsa-dark'); if(saved) setState('darkMode', JSON.parse(saved)); const w = window.innerWidth; setState('isMobile', w < 1024); setState('sidebarOpen', w >= 1024); window.addEventListener('resize', () => { const nw = window.innerWidth; setState('isMobile', nw < 1024); if(nw >= 1024) setState('sidebarOpen', true); else setState('sidebarOpen', false); }); console.log('Dashboard mounted')"
+// Form State
+let formData = { id: null, name: "", status: "active", progress: 0, team: 1, deadline: "", description: "" }
+
+watch darkMode = "localStorage.setItem('jsa-dark', JSON.stringify(getState('darkMode')))"
+watch projects = "localStorage.setItem('jsa-projects', JSON.stringify(getState('projects')))"
+
+on mount = "const saved = localStorage.getItem('jsa-dark'); if(saved) setState('darkMode', JSON.parse(saved)); const projSaved = localStorage.getItem('jsa-projects'); if(projSaved) setState('projects', JSON.parse(projSaved)); const w = window.innerWidth; setState('isMobile', w < 1024); setState('sidebarOpen', w >= 1024); console.log('Dashboard mounted')"
 on destroy = "console.log('Dashboard destroyed')"
 
 fn toggleDark = "setState('darkMode', !getState('darkMode'))"
 fn toggleSidebar = "setState('sidebarOpen', !getState('sidebarOpen'))"
 fn closeSidebar = "if(getState('isMobile')) setState('sidebarOpen', false)"
-fn openModal = "setState('showModal', true); setState('modalContent', 'New Project')"
-fn closeModal = "setState('showModal', false); setState('modalContent', '')"
-fn addNotification = "const msg = 'Action completed'; const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: msg, type: 'info' }]); setTimeout(() => { const notifs = getState('notifications').filter(n => n.id !== id); setState('notifications', notifs); }, 3000)"
+
+// Modal Functions
+fn openCreateModal = "setState('modalMode', 'create'); const fd = {}; fd.id = null; fd.name = ''; fd.status = 'active'; fd.progress = 0; fd.team = 1; fd.deadline = ''; fd.description = ''; setState('formData', fd); setState('showModal', true); setState('modalContent', 'New Project')"
+fn openEditModal = "const id = arguments[0]; const projs = getState('projects'); const proj = projs.find(function(p) { return p.id === id; }); if(proj) { const fd = Object.assign({}, proj); setState('formData', fd); setState('modalMode', 'edit'); setState('showModal', true); setState('modalContent', 'Edit Project'); }"
+fn openViewModal = "const id = arguments[0]; const projs = getState('projects'); const proj = projs.find(function(p) { return p.id === id; }); if(proj) { const fd = Object.assign({}, proj); setState('formData', fd); setState('modalMode', 'view'); setState('showModal', true); setState('modalContent', 'Project Details'); }"
+fn closeModal = "setState('showModal', false); const fd = {}; fd.id = null; fd.name = ''; fd.status = 'active'; fd.progress = 0; fd.team = 1; fd.deadline = ''; fd.description = ''; setState('formData', fd)"
+
+// CRUD Functions
+fn saveProject = "const fd = getState('formData'); if(!fd.name) { const errId = Date.now(); const notifs = getState('notifications').slice(); const newNotif = {}; newNotif.id = errId; newNotif.message = 'Project name is required'; newNotif.type = 'error'; notifs.push(newNotif); setState('notifications', notifs); setTimeout(function() { const n = getState('notifications').filter(function(x) { return x.id !== errId; }); setState('notifications', n); }, 3000); return; }; const projects = getState('projects').slice(); const isCreate = getState('modalMode') === 'create'; if(isCreate) { const newProj = Object.assign({}, fd); newProj.id = Date.now(); projects.push(newProj); setState('projects', projects); const succId = Date.now(); const n2 = getState('notifications').slice(); const newNotif2 = {}; newNotif2.id = succId; newNotif2.message = 'Project created: ' + fd.name; newNotif2.type = 'success'; n2.push(newNotif2); setState('notifications', n2); setTimeout(function() { const n3 = getState('notifications').filter(function(x) { return x.id !== succId; }); setState('notifications', n3); }, 3000); } else { const updated = projects.map(function(p) { return p.id === fd.id ? fd : p; }); setState('projects', updated); const succId = Date.now(); const n4 = getState('notifications').slice(); const newNotif4 = {}; newNotif4.id = succId; newNotif4.message = 'Project updated: ' + fd.name; newNotif4.type = 'success'; n4.push(newNotif4); setState('notifications', n4); setTimeout(function() { const n5 = getState('notifications').filter(function(x) { return x.id !== succId; }); setState('notifications', n5); }, 3000); }; closeModal()"
+fn deleteProject = "const id = arguments[0]; const projects = getState('projects').filter(function(p) { return p.id !== id; }); setState('projects', projects); const nid = Date.now(); const notifs = getState('notifications').slice(); const newNotif = {}; newNotif.id = nid; newNotif.message = 'Project deleted'; newNotif.type = 'info'; notifs.push(newNotif); setState('notifications', notifs); setTimeout(function() { const n = getState('notifications').filter(function(x) { return x.id !== nid; }); setState('notifications', n); }, 3000)"
+
+// Form Helpers
+fn setFormField = "const field = arguments[0]; const value = arguments[1]; const fd = getState('formData'); fd[field] = value; setState('formData', fd)"
+fn getStatusColor = "const s = arguments[0]; return s === 'active' ? 'text-green-500 bg-green-50' : s === 'paused' ? 'text-yellow-500 bg-yellow-50' : 'text-gray-500 bg-gray-50'"
+fn getProgressColor = "const p = arguments[0]; return p >= 80 ? 'bg-green-500' : p >= 50 ? 'bg-blue-500' : 'bg-yellow-500'"
+
+fn addNotification = "const msg = 'Action completed'; const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = msg; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000)"
 
 style
   .fade-enter-from { opacity: 0; }
@@ -42,6 +64,13 @@ style
   .overlay-enter-from { opacity: 0; }
   .overlay-enter-active { transition: opacity 0.3s ease-out; }
   .overlay-enter-to { opacity: 1; }
+  
+  .toast-enter-from { opacity: 0; transform: translateX(100%); }
+  .toast-enter-active { transition: all 0.3s ease-out; }
+  .toast-enter-to { opacity: 1; transform: translateX(0); }
+  .toast-leave-from { opacity: 1; transform: translateX(0); }
+  .toast-leave-active { transition: all 0.3s ease-in; }
+  .toast-leave-to { opacity: 0; transform: translateX(100%); }
 
 div.dashboard :class = "${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'} min-h-screen transition-colors duration-300"
   
@@ -58,11 +87,11 @@ div.dashboard :class = "${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'} min-h-sc
         button :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} p-2 rounded-lg lg:hidden" @click = "setState('sidebarOpen', false)" = "✕"
       
       nav :class = "flex-1 space-y-2 overflow-y-auto"
-        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Dashboard', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📊 Dashboard"
-        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Projects', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📁 Projects"
-        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Tasks', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "✅ Tasks"
-        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Team', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "👥 Team"
-        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); setState('notifications', [...getState('notifications'), { id, message: 'Navigating to Settings', type: 'info' }]); setTimeout(() => { setState('notifications', getState('notifications').filter(n => n.id !== id)); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "⚙️ Settings"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = 'Navigating to Dashboard'; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📊 Dashboard"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = 'Navigating to Projects'; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "📁 Projects"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = 'Navigating to Tasks'; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "✅ Tasks"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = 'Navigating to Team'; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "👥 Team"
+        a :class = "${darkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'} flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer whitespace-nowrap" @click = "const id = Date.now(); const notifs = getState('notifications').slice(); const n = {}; n.id = id; n.message = 'Navigating to Settings'; n.type = 'info'; notifs.push(n); setState('notifications', notifs); setTimeout(function() { const x = getState('notifications').filter(function(y) { return y.id !== id; }); setState('notifications', x); }, 3000); if(getState('isMobile')) setState('sidebarOpen', false)" = "⚙️ Settings"
       
       div :class = "border-t ${darkMode ? 'border-gray-800' : 'border-gray-200'} pt-4 mt-4"
         div :class = "flex items-center gap-3 px-4 py-3"
@@ -83,14 +112,14 @@ div.dashboard :class = "${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'} min-h-sc
         button :class = "relative"
           span :class = "text-xl" = "🔔"
           span :class = "absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center" = "${notifications.length}"
-        button :class = "${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-3 lg:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap" @click = "openModal()" = "+ New"
+        button :class = "${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-3 lg:px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap" @click = "openCreateModal()" = "+ New Project"
     
     // Page Content
     div :class = "p-4 lg:p-6 space-y-4 lg:space-y-6"
       // Welcome Banner
       div :class = "${darkMode ? 'bg-gradient-to-r from-blue-900 to-purple-900' : 'bg-gradient-to-r from-blue-500 to-purple-600'} rounded-xl lg:rounded-2xl p-4 lg:p-6 text-white"
         h2 :class = "text-lg lg:text-2xl font-bold mb-2" = "Welcome back, ${currentUser.name}! 👋"
-        p :class = "opacity-90 text-sm lg:text-base" = "You have ${43} pending tasks and ${18} active projects"
+        p :class = "opacity-90 text-sm lg:text-base" = "You have ${projects.length} projects (${projects.filter(p => p.status === 'active').length} active)"
       
       // Stats Grid - Responsive
       div :class = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6"
@@ -98,84 +127,106 @@ div.dashboard :class = "${darkMode ? 'dark bg-gray-950' : 'bg-gray-50'} min-h-sc
           div :class = "flex items-center justify-between"
             div
               p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Total Projects"
-              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "24"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "${projects.length}"
             span :class = "text-3xl lg:text-4xl" = "📊"
         div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
           div :class = "flex items-center justify-between"
             div
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Active"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "${projects.filter(p => p.status === 'active').length}"
+            span :class = "text-3xl lg:text-4xl" = "🟢"
+        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+          div :class = "flex items-center justify-between"
+            div
               p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Completed"
-              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "156"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "${projects.filter(p => p.status === 'done').length}"
             span :class = "text-3xl lg:text-4xl" = "✅"
         div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
           div :class = "flex items-center justify-between"
             div
-              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Team Members"
-              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "12"
-            span :class = "text-3xl lg:text-4xl" = "👥"
-        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
-          div :class = "flex items-center justify-between"
-            div
-              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Pending Tasks"
-              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "43"
-            span :class = "text-3xl lg:text-4xl" = "⏳"
+              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "Avg Progress"
+              p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-2xl lg:text-3xl font-bold mt-1" = "${Math.round(projects.reduce((sum, p) => sum + p.progress, 0) / (projects.length || 1))}%"
+            span :class = "text-3xl lg:text-4xl" = "📈"
       
-      // Content Grid - Responsive
-      div :class = "grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6"
-        // Project Card
-        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
-          h3 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-base lg:text-lg font-semibold mb-4" = "🚀 Featured Project"
-          div :class = "space-y-3 lg:space-y-4"
-            div
-              div :class = "flex justify-between mb-2"
-                span :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm lg:text-base" = "Website Redesign"
-                span :class = "text-green-500 text-xs lg:text-sm" = "Active"
-              div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-200'} rounded-full h-2 lg:h-3 overflow-hidden"
-                div :class = "bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full" :style = "width: 75%"
-              p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs lg:text-sm mt-2" = "75% complete • Due Apr 15"
-            div :class = "flex gap-2"
-              button :class = "flex-1 bg-blue-500 text-white py-2 lg:py-2.5 rounded-lg text-xs lg:text-sm hover:bg-blue-600 transition-colors" @click = "openModal('Edit Project')" = "Edit"
-              button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-2 lg:py-2.5 rounded-lg text-xs lg:text-sm hover:bg-gray-200 transition-colors" @click = "openModal('View Details')" = "View"
+      // Projects Grid - Responsive
+      div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
+        div :class = "flex items-center justify-between mb-4"
+          h3 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-base lg:text-lg font-semibold" = "📁 All Projects"
+          span :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm" = "${projects.length} projects"
+        div :class = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          div :class = "${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-4 transition-all hover:shadow-lg" each = "${projects}" transition = "toast"
+            div :class = "flex items-start justify-between mb-3"
+              div :class = "flex-1 min-w-0"
+                h4 :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-semibold truncate" = "${item.name}"
+                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs mt-1" = "${item.deadline}"
+              span :class = "${getStatusColor(item.status)} text-xs px-2 py-1 rounded-full capitalize whitespace-nowrap" = "${item.status}"
+            div :class = "mb-3"
+              div :class = "flex justify-between text-xs mb-1"
+                span :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'}" = "Progress"
+                span :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium" = "${item.progress}%"
+              div :class = "${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2 overflow-hidden"
+                div :class = "${getProgressColor(item.progress)} h-full rounded-full transition-all" :style = "width: ${item.progress}%"
+            div :class = "flex items-center justify-between"
+              div :class = "flex items-center gap-2"
+                span :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "👥 ${item.team}"
+              div :class = "flex gap-1"
+                button :class = "${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white text-xs px-2 py-1 rounded" @click.stop = "openEditModal(item.id)" = "✏️"
+                button :class = "${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'} text-xs px-2 py-1 rounded" @click.stop = "openViewModal(item.id)" = "👁️"
+                button :class = "${darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white text-xs px-2 py-1 rounded" @click.stop = "deleteProject(item.id)" = "🗑️"
         
-        // Task List
-        div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'} border rounded-xl p-4 lg:p-5"
-          h3 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-base lg:text-lg font-semibold mb-4" = "✅ Recent Tasks"
-          div :class = "space-y-2 lg:space-y-3"
-            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
-              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
-              div :class = "flex-1 min-w-0"
-                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm truncate" = "Design mockups"
-                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Alice"
-              span :class = "text-red-500 bg-red-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "High"
-            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
-              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
-              div :class = "flex-1 min-w-0"
-                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm truncate" = "API integration"
-                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Bob"
-              span :class = "text-yellow-500 bg-yellow-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "Medium"
-            div :class = "${darkMode ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-3 lg:p-4 flex items-center gap-3 lg:gap-4"
-              input :type = "checkbox" :class = "w-4 h-4 lg:w-5 lg:h-5 rounded"
-              div :class = "flex-1 min-w-0"
-                p :class = "${darkMode ? 'text-white' : 'text-gray-900'} font-medium text-sm line-through opacity-50 truncate" = "Documentation"
-                p :class = "${darkMode ? 'text-gray-400' : 'text-gray-500'} text-xs" = "Carol"
-              span :class = "text-green-500 bg-green-50 text-xs px-2 lg:px-3 py-1 rounded-full whitespace-nowrap" = "Done"
+        div :class = "${darkMode ? 'text-gray-500' : 'text-gray-400'} text-center py-8" if = "${projects.length === 0}"
+          p = "No projects yet"
+          button :class = "${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded-lg mt-4" @click = "openCreateModal()" = "+ Create First Project"
     
     // Footer
     footer :class = "${darkMode ? 'text-gray-500' : 'text-gray-400'} text-center text-xs lg:text-sm py-6" = "Built with JSA Framework v6 • 2025"
   
-  // Modal - Responsive
+  // Modal - Responsive (Create/Edit/View)
   div :class = "fixed inset-0 modal-overlay flex items-center justify-center z-50 p-4" if = "${showModal}" @click.self = "closeModal()"
-    div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white'} rounded-2xl p-6 lg:p-8 max-w-md w-full shadow-2xl" transition = "fade"
-      h2 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-lg lg:text-xl font-bold mb-6" = "${modalContent}"
+    div :class = "${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white'} rounded-2xl p-6 lg:p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto" transition = "fade"
+      div :class = "flex items-center justify-between mb-6"
+        h2 :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-lg lg:text-xl font-bold" = "${modalContent}"
+        button :class = "${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}" @click = "closeModal()" = "✕"
+      
+      // Form Fields
       div :class = "space-y-4"
-        input :type = "text" :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Enter title..."
-        textarea :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Enter description..." :rows = "4"
-        div :class = "flex gap-3"
-          button :class = "flex-1 bg-blue-500 text-white py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors" @click = "closeModal()" = "Save"
-          button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors" @click = "closeModal()" = "Cancel"
+        div
+          label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Project Name *"
+          input :type = "text" :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Enter project name..." :value = "${formData.name}" @input = "setFormField('name', e.target.value)" :disabled = "${modalMode === 'view'}"
+        
+        div :class = "grid grid-cols-2 gap-4"
+          div
+            label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Status"
+            select :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :disabled = "${modalMode === 'view'}" @change = "setFormField('status', e.target.value)"
+              option :value = "active" :selected = "${formData.status === 'active'}" = "Active"
+              option :value = "paused" :selected = "${formData.status === 'paused'}" = "Paused"
+              option :value = "done" :selected = "${formData.status === 'done'}" = "Done"
+          div
+            label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Team"
+            input :type = "number" :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :value = "${formData.team}" @input = "setFormField('team', e.target.value)" :disabled = "${modalMode === 'view'}"
+        
+        div
+          label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Progress: ${formData.progress}%"
+          input :type = "range" :min = "0" :max = "100" :class = "w-full" :value = "${formData.progress}" @input = "setFormField('progress', e.target.value)" :disabled = "${modalMode === 'view'}"
+        
+        div
+          label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Deadline"
+          input :type = "date" :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :value = "${formData.deadline}" @input = "setFormField('deadline', e.target.value)" :disabled = "${modalMode === 'view'}"
+        
+        div
+          label :class = "${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium block mb-1" = "Description"
+          textarea :class = "${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} border rounded-lg px-4 py-3 w-full focus:outline-none focus:ring-2 focus:ring-blue-500" :placeholder = "Project description..." :rows = "3" :value = "${formData.description}" @input = "setFormField('description', e.target.value)" :disabled = "${modalMode === 'view'}"
+      
+      // Action Buttons
+      div :class = "flex gap-3 mt-6" if = "${modalMode !== 'view'}"
+        button :class = "flex-1 bg-blue-500 text-white py-3 rounded-xl font-medium hover:bg-blue-600 transition-colors" @click = "saveProject()" = "${modalMode === 'create' ? 'Create Project' : 'Save Changes'}"
+        button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors" @click = "closeModal()" = "Cancel"
+      div :class = "flex gap-3 mt-6" if = "${modalMode === 'view'}"
+        button :class = "flex-1 ${darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700'} py-3 rounded-xl font-medium hover:bg-gray-200 transition-colors" @click = "closeModal()" = "Close"
   
   // Notifications - Responsive
   div :class = "fixed top-4 right-4 z-50 space-y-3 w-full max-w-xs lg:max-w-sm"
     div :class = "${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-lg p-4 flex items-center gap-3" each = "${notifications}" transition = "toast"
       span :class = "text-xl" = "ℹ️"
       p :class = "${darkMode ? 'text-white' : 'text-gray-900'} text-sm flex-1" = "${item.message}"
-      button :class = "${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}" @click = "const id = item.id; setState('notifications', getState('notifications').filter(n => n.id !== id))" = "×"
+      button :class = "${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-600'}" @click = "const id = item.id; const notifs = getState('notifications').filter(function(n) { return n.id !== id; }); setState('notifications', notifs)" = "×"
