@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="JSALT — Minimal, reactive, AI-first SPA framework. Single-file components, zero build step, built-in hash routing.">
+  <title>JSALT Framework</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #060b18;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+    .glass {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      backdrop-filter: blur(12px);
+    }
+    .grad-text {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 60%, #34d399 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-glow {
+      background: radial-gradient(ellipse 80% 50% at 50% -5%, rgba(59,130,246,0.2) 0%, transparent 70%);
+    }
+    pre.code-block {
+      background: #0a0f1e;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 0.75rem 0 1.25rem;
+    }
+    pre.code-block code {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: #93c5fd;
+      white-space: pre;
+      display: block;
+    }
+    .doc-h1 { font-size: 1.875rem; font-weight: 700; margin-bottom: 0.75rem; color: #f1f5f9; }
+    .doc-h2 { font-size: 1.125rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: #e2e8f0; border-left: 2px solid #3b82f6; padding-left: 0.75rem; }
+    .doc-p  { color: #94a3b8; line-height: 1.8; margin-bottom: 0.75rem; font-size: 0.9375rem; }
+    .sidebar-link { cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; display: block; transition: all 0.15s; }
+    .sidebar-link:hover { background: rgba(255,255,255,0.07); }
+    .nav-active { color: #60a5fa; border-bottom: 2px solid #60a5fa; padding-bottom: 2px; }
+    .fade-enter-active { transition: opacity 0.3s ease; }
+    .fade-enter-from { opacity: 0; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import { load } from './jsa-runtime.js';
+    load('./index.jsa', '#app').then(app => window.jsalt = app);
+  </script>
+</body>
+</html>

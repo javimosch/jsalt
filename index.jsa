@@ -1,0 +1,343 @@
+// JSALT Framework SPA — Landing + Docs + Guides + Examples
+let docSection = 'intro'
+
+style
+  a { text-decoration: none; }
+  .nav-active { color: #60a5fa; border-bottom: 2px solid #60a5fa; padding-bottom: 2px; }
+  .sidebar-link { cursor: pointer; padding: 6px 10px; border-radius: 6px; font-size: 0.85rem; display: block; transition: all 0.15s; }
+  .sidebar-link:hover { background: rgba(255,255,255,0.07); }
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; }
+  .doc-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 1.5rem 0; }
+
+div.min-h-screen.flex.flex-col.hero-glow
+  // ── Navbar ──────────────────────────────────────────────────────────────────
+  nav.sticky.top-0.z-50.glass.px-8.py-4.flex.justify-between.items-center
+    a.flex.items-center.gap-1.font-bold.text-xl href="#/"
+      span.grad-text = "JSA"
+      span.text-slate-300 = "LT"
+    div.flex.items-center.gap-7
+      a.text-sm.font-medium.transition :class="${route === '#/' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/" = "Home"
+      a.text-sm.font-medium.transition :class="${route === '#/docs' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/docs" = "Docs"
+      a.text-sm.font-medium.transition :class="${route === '#/guides' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/guides" = "Guides"
+      a.text-sm.font-medium.transition :class="${route === '#/examples' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/examples" = "Examples"
+      a.text-sm.px-4.py-1.rounded-full.glass.hover:bg-white/10.transition target="_blank" href="https://github.com/jarancibia/jsalt" = "GitHub →"
+
+  main.flex-grow
+
+    // ── LANDING ──────────────────────────────────────────────────────────────
+    div if="${route === '#/'}"
+      // Hero
+      div.max-w-4xl.mx-auto.px-8.pt-24.pb-20.text-center
+        span.badge.glass.text-blue-400.mb-6 = "AI-native · Zero Build · Single File Components"
+        h1.text-7xl.font-bold.mt-6.mb-4
+          span.grad-text = "JSALT"
+        p.text-2xl.text-slate-300.font-light.mb-4 = "The no-human framework."
+        p.text-lg.text-slate-400.max-w-2xl.mx-auto.mb-10 = "Build reactive SPAs in a single .jsa file. No npm install. No bundler. Minimal token footprint — optimised for AI code generation."
+        div.flex.justify-center.gap-4.flex-wrap
+          a.px-8.py-3.rounded-full.bg-blue-600.hover:bg-blue-500.font-semibold.transition-all href="#/docs" = "Get Started"
+          a.px-8.py-3.rounded-full.glass.hover:bg-white/10.font-semibold.transition-all href="#/examples" = "See Examples"
+
+      // Feature Cards
+      div.max-w-6xl.mx-auto.px-8.pb-20
+        h2.text-center.text-slate-500.text-sm.uppercase.tracking-widest.mb-10 = "Built for machines, readable by humans"
+        div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-5
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "📄"
+            h3.font-semibold.text-lg.mb-1 = "Single File"
+            p.text-slate-400.text-sm = "Template, script, and scoped styles in one .jsa file. Everything in one place."
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "⚡"
+            h3.font-semibold.text-lg.mb-1 = "Reactive State"
+            p.text-slate-400.text-sm = "Declare state with 'let'. Virtual DOM patches only what changes — automatically."
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "🔀"
+            h3.font-semibold.text-lg.mb-1 = "Hash Routing"
+            p.text-slate-400.text-sm = "Built-in SPA routing via URL hash. The 'route' variable auto-updates on navigation."
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "🎨"
+            h3.font-semibold.text-lg.mb-1 = "Scoped CSS"
+            p.text-slate-400.text-sm = "The 'style' block auto-scopes CSS to your component. No collision risk."
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "🤖"
+            h3.font-semibold.text-lg.mb-1 = "AI-First"
+            p.text-slate-400.text-sm = "Predictable syntax, flat structure, low token count. Designed for code generation."
+          div.glass.p-6.rounded-2xl
+            p.text-3xl.mb-3 = "🚫"
+            h3.font-semibold.text-lg.mb-1 = "Zero Config"
+            p.text-slate-400.text-sm = "No npm install. No build step. One script tag and you're running."
+
+      // Quick Install
+      div.max-w-3xl.mx-auto.px-8.pb-24
+        h2.text-2xl.font-bold.text-center.mb-6 = "Start in 30 seconds"
+        pre.code-block
+          code = "<div id=\"app\"></div>\n<script type=\"module\">\n  import { load } from './jsa-runtime.js';\n  load('./app.jsa', '#app');\n</script>"
+        p.text-center.text-slate-500.text-sm = "Then create app.jsa with any template and open index.html in a browser."
+
+    // ── DOCS ─────────────────────────────────────────────────────────────────
+    div if="${route === '#/docs'}"
+      div.max-w-6xl.mx-auto.px-8.py-12.flex.gap-10
+        // Sidebar
+        aside.w-52.shrink-0.sticky.top-24.self-start
+          p.text-xs.font-bold.uppercase.tracking-wider.text-slate-500.mb-2 = "Getting Started"
+          a.sidebar-link :class="${docSection === 'intro' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'intro')" = "Introduction"
+          a.sidebar-link :class="${docSection === 'install' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'install')" = "Installation"
+          a.sidebar-link :class="${docSection === 'syntax' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'syntax')" = "Template Syntax"
+          p.text-xs.font-bold.uppercase.tracking-wider.text-slate-500.mt-5.mb-2 = "Core"
+          a.sidebar-link :class="${docSection === 'reactivity' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'reactivity')" = "Reactivity"
+          a.sidebar-link :class="${docSection === 'directives' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'directives')" = "Directives"
+          a.sidebar-link :class="${docSection === 'events' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'events')" = "Events"
+          a.sidebar-link :class="${docSection === 'routing' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'routing')" = "Routing"
+          p.text-xs.font-bold.uppercase.tracking-wider.text-slate-500.mt-5.mb-2 = "Features"
+          a.sidebar-link :class="${docSection === 'styles' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'styles')" = "Scoped Styles"
+          a.sidebar-link :class="${docSection === 'lifecycle' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'lifecycle')" = "Lifecycle"
+          a.sidebar-link :class="${docSection === 'advanced' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'advanced')" = "Advanced"
+          a.sidebar-link :class="${docSection === 'composables' ? 'bg-blue-500/15 text-blue-400' : 'text-slate-400'}" @click="setState('docSection', 'composables')" = "Composables"
+
+        // Content
+        article.flex-grow.min-w-0
+
+          div if="${docSection === 'intro'}"
+            h1.doc-h1 = "Introduction"
+            p.doc-p = "JSALT is a minimal, reactive, AI-first framework for building SPAs. Write template, logic, and styles in a single .jsa file. No build step, no npm install, no configuration."
+            p.doc-p = "It is specifically designed for non-human (AI agent) code generation: flat, predictable syntax with a small token footprint and machine-readable error codes."
+            div.doc-divider
+            h2.doc-h2 = "Design Principles"
+            ul.list-disc.list-inside.space-y-2.text-slate-400.text-sm.mb-4
+              li = "Single File Components — template + script + style in .jsa"
+              li = "Reactive by default — let variables trigger DOM patches automatically"
+              li = "Hash routing built-in — the 'route' variable auto-tracks the URL hash"
+              li = "Scoped CSS — the style block isolates CSS via auto-injected data attributes"
+              li = "AI-native — minimal escaping, consistent patterns, low token count"
+            div.doc-divider
+            h2.doc-h2 = "Quick Example"
+            pre.code-block
+              code = "// counter.jsa\nlet count = 0\nconst doubled = computed(() => count * 2)\n\ndiv.p-8\n  h1 = \"Counter\"\n  p = \"Doubled value shown below\"\n  button @click=\"count++\" = \"Increment\"\n  p = \"Count is reactive state\""
+
+          div if="${docSection === 'install'}"
+            h1.doc-h1 = "Installation"
+            p.doc-p = "JSALT requires no installation. Add a single script tag to your HTML file and call load() to mount your first .jsa component."
+            pre.code-block
+              code = "<!-- index.html -->\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>My App</title>\n</head>\n<body>\n  <div id=\"app\"></div>\n  <script type=\"module\">\n    import { load } from './jsa-runtime.js';\n    load('./app.jsa', '#app');\n  </script>\n</body>\n</html>"
+            p.doc-p = "Then create app.jsa:"
+            pre.code-block
+              code = "// app.jsa\nlet name = 'World'\n\ndiv.p-8\n  h1 = \"Hello, World!\"\n  p = \"Edit app.jsa and refresh to see changes.\""
+            div.doc-divider
+            h2.doc-h2 = "Runtime File"
+            p.doc-p = "Download jsa-runtime.js from the GitHub repository and place it alongside your HTML file. Or reference the CDN URL directly in your import statement."
+
+          div if="${docSection === 'syntax'}"
+            h1.doc-h1 = "Template Syntax"
+            p.doc-p = "A .jsa file has three sections: a script block (declarations), an optional style block, and a template block (indented HTML). Indentation defines element nesting."
+            pre.code-block
+              code = "// Script: one declaration per line\nlet title = 'Hello'\nconst upper = computed(() => title.toUpperCase())\nfn save = \"setState('saved', true)\"\n\n// Style: auto-scoped to this component\nstyle\n  h1 { color: #60a5fa; font-size: 2rem; }\n  .card { border-radius: 12px; padding: 1rem; }\n\n// Template: indentation = nesting\ndiv.card\n  h1 = \"Title goes here\"\n  button @click=\"save()\" = \"Save\""
+            div.doc-divider
+            h2.doc-h2 = "Element Syntax"
+            p.doc-p = "Elements use CSS selector-like shorthand for tag, id, and classes. Attributes, directives, and content follow on the same line."
+            pre.code-block
+              code = "// Syntax: tag#id.class.class {inline-style} attr=\"val\" = \"content\"\n\n// Examples:\ndiv#hero.text-center.px-8\np.text-slate-400.mb-4 = \"Static text\"\nbutton.btn @click=\"handler()\" = \"Click me\"\ninput type=\"text\" bind=\"query\" placeholder=\"Search...\"\na.link href=\"#/docs\" = \"Read the docs\""
+
+          div if="${docSection === 'reactivity'}"
+            h1.doc-h1 = "Reactivity"
+            p.doc-p = "Declare reactive state with 'let'. Any state change triggers a virtual DOM diff and patch — only changed nodes update."
+            pre.code-block
+              code = "let count = 0\nlet name = 'JSALT'\n\nh1 = \"Hello from JSALT\"\nbutton @click=\"count++\" = \"Increment\"\nbutton @click=\"setState('name', 'World')\" = \"Change Name\""
+            div.doc-divider
+            h2.doc-h2 = "setState(key, value)"
+            p.doc-p = "Use setState() for explicit updates, especially inside loops (each directive) or when setting complex values:"
+            pre.code-block
+              code = "let items = ['a', 'b']\n\nbutton @click=\"setState('items', [...items, 'c'])\" = \"Add Item\"\nbutton @click=\"setState('items', [])\" = \"Clear\""
+            div.doc-divider
+            h2.doc-h2 = "Computed Values"
+            p.doc-p = "Computed values derive from state and update automatically:"
+            pre.code-block
+              code = "let price = 10\nlet qty = 3\nconst total = computed(() => price * qty)\nconst label = computed(() => qty + ' items at $' + price + ' each')\n\np = \"Total computed from price and qty\""
+
+          div if="${docSection === 'directives'}"
+            h1.doc-h1 = "Directives"
+            p.doc-p = "Directives are special built-in attributes that control rendering behaviour."
+            div.doc-divider
+            h2.doc-h2 = "if — Conditional Rendering"
+            pre.code-block
+              code = "let logged = false\n\ndiv if=\"${logged}\" = \"Dashboard\"\ndiv if=\"${!logged}\" = \"Please log in\""
+            h2.doc-h2 = "show — Toggle Visibility"
+            pre.code-block
+              code = "// Stays in DOM, hides via display:none\ndiv show=\"${isOpen}\" = \"Dropdown content\""
+            h2.doc-h2 = "each — List Rendering"
+            pre.code-block
+              code = "let fruits = ['Apple', 'Banana', 'Cherry']\n\nul\n  li each=\"${fruits}\" = \"Item: item and index: idx\""
+            h2.doc-h2 = "bind — Two-Way Input Binding"
+            pre.code-block
+              code = "let email = ''\n\ninput type=\"email\" bind=\"email\" placeholder=\"Enter email\"\np = \"Bound to email state variable\""
+            h2.doc-h2 = "html — Raw HTML Injection"
+            pre.code-block
+              code = "let markup = '<strong>Bold</strong> text'\n\ndiv html=\"${markup}\""
+
+          div if="${docSection === 'events'}"
+            h1.doc-h1 = "Events"
+            p.doc-p = "Attach DOM event listeners using the @ prefix. The handler is a JavaScript expression evaluated in the component scope."
+            pre.code-block
+              code = "button @click=\"count++\" = \"Click me\"\ninput @input=\"setState('q', event.target.value)\"\nform @submit.prevent=\"handleSubmit()\"\ndiv @mouseenter=\"setState('hovered', true)\""
+            div.doc-divider
+            h2.doc-h2 = "Event Modifiers"
+            ul.list-disc.list-inside.space-y-2.text-slate-400.text-sm.my-3
+              li = ".prevent — calls e.preventDefault()"
+              li = ".stop — calls e.stopPropagation()"
+              li = ".once — handler fires at most once"
+              li = ".self — only fires when e.target === element itself"
+            h2.doc-h2 = "Key Modifiers"
+            p.doc-p = "Combine with keydown/keyup to filter by key:"
+            ul.list-disc.list-inside.space-y-2.text-slate-400.text-sm.my-3
+              li = ".enter, .esc, .tab, .space — common keys"
+              li = ".up, .down, .left, .right — arrow keys"
+              li = ".delete — Delete / Backspace"
+            pre.code-block
+              code = "input @keydown.enter=\"submit()\" bind=\"message\"\ndiv @keydown.esc=\"setState('open', false)\""
+
+          div if="${docSection === 'routing'}"
+            h1.doc-h1 = "Routing"
+            p.doc-p = "JSALT has built-in hash routing. The 'route' state variable is automatically initialised to window.location.hash and updated on every hashchange event. No declaration needed."
+            pre.code-block
+              code = "// route is auto-managed by the runtime\n\ndiv if=\"${route === '#/'}\"\n  h1 = \"Home Page\"\n\ndiv if=\"${route === '#/about'}\"\n  h1 = \"About Page\"\n\ndiv if=\"${route === '#/contact'}\"\n  h1 = \"Contact Page\"\n\n// Standard anchor links trigger routing:\na href=\"#/about\" = \"Go to About\"\na href=\"#/contact\" = \"Contact\""
+            div.doc-divider
+            h2.doc-h2 = "Sub-navigation"
+            p.doc-p = "For sidebar-style navigation within a route, use a separate state variable:"
+            pre.code-block
+              code = "let section = 'overview'\n\naside\n  a @click=\"setState('section', 'overview')\" = \"Overview\"\n  a @click=\"setState('section', 'api')\" = \"API\"\n\narticle\n  div if=\"${section === 'overview'}\" = \"Overview content\"\n  div if=\"${section === 'api'}\" = \"API reference\""
+
+          div if="${docSection === 'styles'}"
+            h1.doc-h1 = "Scoped Styles"
+            p.doc-p = "CSS declared in the 'style' block is automatically scoped to the component. JSALT appends a unique data attribute to every element and rewrites CSS selectors to match."
+            pre.code-block
+              code = "style\n  .card { border-radius: 12px; background: #1e293b; padding: 1.5rem; }\n  h2 { color: #60a5fa; margin-bottom: 0.5rem; }\n  p { color: #94a3b8; }\n\ndiv.card\n  h2 = \"Scoped heading\"\n  p = \"This CSS won't leak outside the component\""
+            div.doc-divider
+            h2.doc-h2 = "Dynamic Classes"
+            p.doc-p = "Use ':class' for conditional class binding:"
+            pre.code-block
+              code = "let active = false\n\nbutton :class=\"${active ? 'bg-blue-600' : 'bg-slate-700'}\" @click=\"active = !active\" = \"Toggle\""
+            h2.doc-h2 = "Inline Style Binding"
+            p.doc-p = "Use ':style' for dynamic inline styles:"
+            pre.code-block
+              code = "let hue = 220\n\ndiv :style=\"${'background: hsl(' + hue + ', 70%, 50%)'}\"\n  p = \"Color changes with hue variable\""
+
+          div if="${docSection === 'lifecycle'}"
+            h1.doc-h1 = "Lifecycle Hooks"
+            p.doc-p = "Register callbacks to run at specific points in a component's lifecycle."
+            pre.code-block
+              code = "let timer = null\n\non mount = \"timer = setInterval(() => setState('tick', Date.now()), 1000)\"\non destroy = \"clearInterval(timer)\"\nwatch tick = \"console.log('tick changed')\""
+            div.doc-divider
+            h2.doc-h2 = "on mount"
+            p.doc-p = "Runs once after the component is inserted into the DOM. Use it to fetch data, start timers, or initialise third-party libraries."
+            h2.doc-h2 = "on destroy"
+            p.doc-p = "Runs before the component is removed. Use it to clean up timers, subscriptions, or global event listeners."
+            h2.doc-h2 = "watch"
+            p.doc-p = "Runs whenever a specific state key changes. The handler receives the full current state:"
+            pre.code-block
+              code = "let query = ''\nwatch query = \"console.log('Query is now: ', query)\""
+
+          div if="${docSection === 'advanced'}"
+            h1.doc-h1 = "Advanced"
+            h2.doc-h2 = "Named Functions (fn)"
+            p.doc-p = "Define reusable handler functions in the script block:"
+            pre.code-block
+              code = "fn save = \"setState('saved', true); setTimeout(() => setState('saved', false), 2000)\"\nfn resetForm = \"setState('name', ''); setState('email', '')\"\n\nbutton @click=\"save()\" = \"Save\"\nbutton @click=\"resetForm()\" = \"Reset\""
+            div.doc-divider
+            h2.doc-h2 = "Refs"
+            p.doc-p = "Access DOM elements directly using the '$name' prefix on any element:"
+            pre.code-block
+              code = "input $searchInput placeholder=\"Search...\"\nbutton @click=\"searchInput.focus()\" = \"Focus Input\"\nbutton @click=\"console.log(searchInput.value)\" = \"Log Value\""
+            div.doc-divider
+            h2.doc-h2 = "Transitions"
+            p.doc-p = "Animate elements on entry using the 'transition' attribute. Pair with CSS class names matching the pattern: {name}-enter-from, {name}-enter-active, {name}-enter-to."
+            pre.code-block
+              code = "// In style block:\nstyle\n  .fade-enter-active { transition: opacity 0.3s ease; }\n  .fade-enter-from { opacity: 0; }\n\n// In template:\ndiv if=\"${visible}\" transition=\"fade\" = \"Animates on enter\""
+
+          div if="${docSection === 'composables'}"
+            h1.doc-h1 = "Composables"
+            p.doc-p = "Load multiple .jsa files on the same page. Each component is fully isolated: independent state, scoped CSS, and separate lifecycle."
+            pre.code-block
+              code = "// index.html\nimport { load } from './jsa-runtime.js';\nload('./header.jsa', '#header');\nload('./sidebar.jsa', '#sidebar');\nload('./main.jsa', '#content');"
+            div.doc-divider
+            h2.doc-h2 = "mount() — inline templates"
+            p.doc-p = "For programmatic usage or inline templates, use mount():"
+            pre.code-block
+              code = "import { mount } from './jsa-runtime.js';\n\nconst app = mount('#app', `\n  let count = 0\n  button @click=\"count++\" = \"Count: 0\"\n`);\n\n// Access state from outside:\napp.setState('count', 42);\nconsole.log(app.getState('count'));"
+
+    // ── GUIDES ────────────────────────────────────────────────────────────────
+    div if="${route === '#/guides'}"
+      div.max-w-4xl.mx-auto.px-8.py-12
+        h1.text-4xl.font-bold.mb-3 = "Guide: Build a SPA with JSALT"
+        p.text-slate-400.text-lg.mb-10 = "A complete walkthrough from empty folder to a functional multi-page app."
+
+        div.glass.rounded-2xl.p-8.mb-6
+          span.badge.bg-blue-500/20.text-blue-400.text-xs.mb-4 = "Step 1"
+          h2.text-xl.font-bold.mt-4.mb-3 = "Create index.html"
+          p.text-slate-400.mb-4 = "Start with HTML that loads Tailwind (optional) and the JSA runtime."
+          pre.code-block
+            code = "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>My App</title>\n  <script src=\"https://cdn.tailwindcss.com\"></script>\n</head>\n<body>\n  <div id=\"app\"></div>\n  <script type=\"module\">\n    import { load } from './jsa-runtime.js';\n    load('./app.jsa', '#app');\n  </script>\n</body>\n</html>"
+
+        div.glass.rounded-2xl.p-8.mb-6
+          span.badge.bg-blue-500/20.text-blue-400.text-xs.mb-4 = "Step 2"
+          h2.text-xl.font-bold.mt-4.mb-3 = "Add hash routing"
+          p.text-slate-400.mb-4 = "The runtime auto-manages the 'route' variable. Use 'if' directives to show different pages."
+          pre.code-block
+            code = "// app.jsa\nstyle\n  .active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }\n\ndiv\n  nav.flex.gap-6.p-4\n    a :class=\"${route === '#/' ? 'active' : ''}\" href=\"#/\" = \"Home\"\n    a :class=\"${route === '#/about' ? 'active' : ''}\" href=\"#/about\" = \"About\"\n\n  div if=\"${route === '#/'}\"\n    h1 = \"Home\"\n\n  div if=\"${route === '#/about'}\"\n    h1 = \"About\""
+
+        div.glass.rounded-2xl.p-8.mb-6
+          span.badge.bg-blue-500/20.text-blue-400.text-xs.mb-4 = "Step 3"
+          h2.text-xl.font-bold.mt-4.mb-3 = "Add reactive state"
+          p.text-slate-400.mb-4 = "Declare state with 'let' and bind it to the DOM. State changes re-render automatically."
+          pre.code-block
+            code = "let todos = []\nlet input = ''\n\ndiv.p-8\n  h1 = \"Todo App\"\n  div.flex.gap-2\n    input type=\"text\" bind=\"input\" placeholder=\"New todo\" @keydown.enter=\"setState('todos', [...todos, input]); setState('input', '')\"\n    button @click=\"setState('todos', [...todos, input]); setState('input', '')\" = \"Add\"\n  ul.mt-4\n    li each=\"${todos}\" = \"Item from list\""
+
+        div.glass.rounded-2xl.p-8
+          span.badge.bg-blue-500/20.text-blue-400.text-xs.mb-4 = "Step 4"
+          h2.text-xl.font-bold.mt-4.mb-3 = "Style with scoped CSS"
+          p.text-slate-400.mb-4 = "CSS in the style block is scoped automatically. No class name collisions."
+          pre.code-block
+            code = "style\n  li {\n    padding: 10px 14px;\n    border-bottom: 1px solid rgba(255,255,255,0.08);\n    border-radius: 6px;\n    color: #e2e8f0;\n  }\n  input {\n    background: #1e293b;\n    border: 1px solid #475569;\n    border-radius: 8px;\n    padding: 8px 12px;\n    color: white;\n    width: 100%;\n  }"
+
+    // ── EXAMPLES ─────────────────────────────────────────────────────────────
+    div if="${route === '#/examples'}"
+      div.max-w-6xl.mx-auto.px-8.py-12
+        h1.text-4xl.font-bold.mb-3 = "Example Gallery"
+        p.text-slate-400.mb-10 = "Click any example to view its source. All examples are self-contained .jsa files."
+        div.grid.grid-cols-1.md:grid-cols-2.lg:grid-cols-3.gap-5
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Routing SPA"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Multi-route hash SPA with active nav, 3 pages, and a contact form using the bind directive."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/routing.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Counter"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Reactive counter with increment, decrement, reset, and a computed doubled value."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/counter.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Task List"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Todo list with filtering (all/active/done), completion tracking, and computed counts."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/task-list.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Kanban Board"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Drag-and-drop task board. Demonstrates complex state manipulation with arrays."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/kanban.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Dashboard Pro"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Premium analytics dashboard with live KPI cards, charts, and Tailwind styling."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/dashboard-pro.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Form Validation"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Multi-field form with two-way bind and real-time client-side validation."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/form.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Calculator"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Arithmetic calculator with keyboard support and operator chaining."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/calculator.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Stats Panel"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Animated KPI cards with computed metrics and lifecycle-driven timers."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/stats-panel.jsa" = "View source →"
+          div.glass.p-6.rounded-2xl.flex.flex-col
+            h3.font-bold.text-lg.mb-1 = "Toast System"
+            p.text-sm.text-slate-400.mb-4.flex-grow = "Animated notification toasts using the transition directive with CSS keyframes."
+            a.text-sm.text-blue-400.hover:text-blue-300 href="./examples/notification-toast.jsa" = "View source →"
+
+  footer.glass.py-8.px-8.text-center.text-slate-500
+    p.text-sm = "JSALT Framework — Minimal. Reactive. No-human first."
