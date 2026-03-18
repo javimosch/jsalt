@@ -1,8 +1,8 @@
 # JSA Framework
 
-**JSA (JS Alternative)** — A minimal reactive framework where **HTML + CSS + JS live in one `.jsa` file**.
+**JSALT (JS Alternative)** — Build reactive SPAs in a single .jsa file. No npm install. No bundler. Minimal token footprint — optimised for AI code generation and non-humans.
 
-<img width="512" height="512" src="./logo.jpg" alt="JSA Logo"/>
+<img width="512" height="512" src="./logo.png" alt="JSALT Logo"/>
 
 ---
 
