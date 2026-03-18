@@ -1,5 +1,5 @@
 {
-  "name": "jsa-framework",
+  "name": "jsalt",
   "version": "1.0.0",
   "description": "JSA - JS Alternative. HTML+CSS+JS in one .jsa file. Reactive, component-based, AI-agent optimized.",
   "type": "module",
@@ -36,11 +36,11 @@
     "ast",
     "validator"
   ],
-  "author": "JSA Framework",
+  "author": "Javier Leandro Arancibia <arancibiajav@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jsalt/jsa"
+    "url": "git+https://github.com/javimosch/jsalt.git"
   },
   "homepage": "https://github.com/jsalt/jsa#readme",
   "bugs": {

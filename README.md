@@ -27,10 +27,12 @@ mount('#app', `
 load('counter.jsa', '#app');
 ```
 
-### CDN (No Install)
+### CDN (jsdelivr)
 ```html
 <script type="module">
-  import { JSA } from 'https://esm.sh/jsa-framework';
+  // Load the runtime directly from jsdelivr
+  import { load } from 'https://cdn.jsdelivr.net/npm/jsalt/jsa-runtime.js';
+  load('./app.jsa', '#app');
 </script>
 ```
 
