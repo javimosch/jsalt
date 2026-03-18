@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 /**
- * JSA AST CLI v6 - Parse and validate .jsa files
- * Usage: jsa-ast <file.jsa> [--json] [--tree] [--quiet]
+ * JSA AST CLI v7 - Parse and validate .jsa files
+ * Non-human first: machine-readable JSON with error codes
+ * Usage: jsa-ast <path> [--json] [--tree] [--quiet]
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -21,7 +22,7 @@ class JSAParser {
     this.warnings = [];
 
     if (!template || typeof template !== 'string') {
-      this.errors.push({ line: 0, message: 'Empty or invalid template' });
+      this.errors.push({ code: 'E001', line: 0, message: 'Empty or invalid template' });
       return { ast: null, errors: this.errors, warnings: this.warnings };
     }
 
@@ -70,7 +71,7 @@ class JSAParser {
           if (m) {
             state.push({ type: 'state', name: m[1], value: m[2], line: i + 1 });
           } else {
-            this.errors.push({ line: i + 1, message: 'Invalid let syntax: ' + t });
+            this.errors.push({ code: 'E002', line: i + 1, message: 'Invalid let syntax: ' + t });
           }
           i++; continue;
         }
@@ -79,8 +80,28 @@ class JSAParser {
           const m = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*(.+)\s*\)/);
           if (m) {
             state.push({ type: 'computed', name: m[1], expression: m[2], line: i + 1 });
+            i++; continue;
           } else {
-            this.warnings.push({ line: i + 1, message: 'Computed syntax may be incorrect' });
+            // Try multi-line
+            const multi = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*\{/);
+            if (multi) {
+              let expr = '', j = i + 1, depth = 1;
+              while (j < lines.length && depth > 0) {
+                const l = lines[j];
+                if (l.includes('{')) depth++;
+                if (l.includes('}')) depth--;
+                if (depth > 0) expr += l.trim() + ' ';
+                else {
+                    const lastPart = l.split('}')[0];
+                    expr += lastPart.trim();
+                }
+                j++;
+              }
+              state.push({ type: 'computed', name: multi[1], expression: expr.trim(), line: i + 1 });
+              i = j; continue;
+            } else {
+              this.warnings.push({ line: i + 1, message: 'Computed syntax may be incorrect' });
+            }
           }
           i++; continue;
         }
@@ -307,25 +328,53 @@ const flags = {
   help: args.includes('--help') || args.includes('-h')
 };
 
-const files = args.filter(a => !a.startsWith('--'));
+const files = [];
+for (const arg of args.filter(a => !a.startsWith('--'))) {
+    if (!existsSync(arg)) {
+        console.error(`❌ Path not found: ${arg}`);
+        continue;
+    }
+    const stat = statSync(arg);
+    if (stat.isDirectory()) {
+        const walk = (dir) => {
+            const list = readdirSync(dir, { withFileTypes: true });
+            for (const entry of list) {
+                const fullP = join(dir, entry.name);
+                if (entry.isDirectory()) walk(fullP);
+                else if (entry.name.endsWith('.jsa')) files.push(fullP);
+            }
+        };
+        walk(arg);
+    } else {
+        files.push(arg);
+    }
+}
 
 if (flags.help || files.length === 0) {
   console.log(`
-JSA AST Parser v6 - Validate .jsa syntax
+JSA AST CLI v7 - Validate .jsa syntax
 
-Usage: jsa-ast <file.jsa> [options]
+Usage: jsa-ast <path> [options]
 
 Options:
-  --json    Output AST as JSON
+  --json    Output AST as JSON (machine-readable, includes error codes)
   --tree    Output formatted AST tree
-  --quiet   Only show errors (no success message)
+  --quiet   Only show errors
   --help    Show this help
+
+Path can be a file, directory (recursive), or glob.
+
+Error codes in JSON output:
+  E001  Empty/invalid template
+  E002  Invalid let syntax
+  E003  Duplicate state key
+  E004  Invalid directive
+  E005  Missing required attribute
 
 Examples:
   jsa-ast counter.jsa
-  jsa-ast counter.jsa --json
-  jsa-ast counter.jsa --tree
-  jsa-ast *.jsa
+  jsa-ast examples/
+  jsa-ast . --json
 `);
   process.exit(flags.help ? 0 : 1);
 }
@@ -347,7 +396,7 @@ for (const filePath of files) {
 
     if (result.errors.length > 0) {
       console.error(`\n❌ ${filePath}:`);
-      result.errors.forEach(e => console.error(`  Line ${e.line}: ${e.message}`));
+      result.errors.forEach(e => console.error(`  [${e.code || 'ERR'}] Line ${e.line}: ${e.message}`));
       totalErrors += result.errors.length;
     } else {
       validFiles++;
@@ -361,9 +410,8 @@ for (const filePath of files) {
         if (result.ast.hooks.length) parts.push(`H:${result.ast.hooks.length}`);
         if (result.ast.style) parts.push('CSS');
         if (result.ast.refs.length) parts.push(`R:${result.ast.refs.length}`);
-
         if (files.length === 1) {
-          console.log(`\n✅ ${filePath} is valid JSA v6 syntax`);
+          console.log(`\n✅ ${filePath} is valid JSA v7 syntax`);
           console.log(`   ${parts.join(', ')}`);
         } else {
           console.log(`✅ ${filePath} — ${parts.join(', ')}`);
