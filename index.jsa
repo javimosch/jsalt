@@ -20,7 +20,7 @@ div.min-h-screen.flex.flex-col.hero-glow
       a.text-sm.font-medium.transition :class="${route === '#/docs' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/docs" = "Docs"
       a.text-sm.font-medium.transition :class="${route === '#/guides' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/guides" = "Guides"
       a.text-sm.font-medium.transition :class="${route === '#/examples' ? 'nav-active text-blue-400' : 'text-slate-400 hover:text-white'}" href="#/examples" = "Examples"
-      a.text-sm.px-4.py-1.rounded-full.glass.hover:bg-white/10.transition target="_blank" href="https://github.com/jarancibia/jsalt" = "GitHub →"
+      a.text-sm.px-4.py-1.rounded-full.glass.hover:bg-white/10.transition target="_blank" href="https://github.com/jsalt/jsa" = "GitHub →"
 
   main.flex-grow
 
