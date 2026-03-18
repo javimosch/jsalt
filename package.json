@@ -1,7 +1,7 @@
 {
   "name": "jsalt",
   "version": "1.0.0",
-  "description": "JSA - JS Alternative. HTML+CSS+JS in one .jsa file. Reactive, component-based, AI-agent optimized.",
+  "description": "Build reactive SPAs in a single .jsa file. No npm install. No bundler. Minimal token footprint — optimised for AI code generation and non-humans",
   "type": "module",
   "main": "jsa-runtime.js",
   "bin": {
