@@ -1,62 +1,63 @@
 /**
- * JSA Runtime v6 - Reactive Framework
- * Loops, Conditionals, Binding, Dynamic Attrs, Watchers, Lifecycle, Scoped CSS
- * :class Merging, html Directive, :style Dynamic, Event Modifiers, Transitions
+ * JSA Runtime v7 - AI-First Reactive SPA Framework
+ * Signals · VirtualDOM · Hash Routing · Scoped CSS · Transitions
+ * Non-human first: minimal tokens, predictable syntax, error codes
  */
 
 export class JSA {
   constructor(container = document.body) {
     this.container = typeof container === 'string' ? document.querySelector(container) : container;
-    this.refs = {};
-    this.state = {};
-    this.fns = {};
-    this.template = '';
-    this.computedDefs = {};
-    this.watchers = {};
-    this.hooks = { mount: [], destroy: [] };
-    this._scopeId = null;
-    this._styleEl = null;
-    this._updatePending = false;
-    this._preUpdateState = null;
+    this.refs = {}; this.state = {}; this.fns = {}; this.template = '';
+    this.computedDefs = {}; this.watchers = {}; this.hooks = { mount: [], destroy: [] };
+    this._scopeId = null; this._styleEl = null;
+    this._updatePending = false; this._preUpdateState = null;
     this._transitioned = new WeakSet();
+    this._initRouting();
+  }
+
+  _initRouting() {
+    if (typeof window === 'undefined') return;
+    this.state.route = window.location.hash || '#/';
+    window.addEventListener('hashchange', () => this.setState('route', window.location.hash || '#/'));
   }
 
   render(template) {
     if (!this.container) return;
-    this._runHooks('destroy');
-    this._removeStyles();
-
+    this._runHooks('destroy'); this._removeStyles();
+    const curRoute = this.state.route;
     this.template = template;
     this.container.innerHTML = '';
-    this.refs = {};
-    this.state = {};
-    this.fns = {};
-    this.computedDefs = {};
-    this.watchers = {};
+    this.refs = {}; this.state = { route: curRoute };
+    this.fns = {}; this.computedDefs = {}; this.watchers = {};
     this.hooks = { mount: [], destroy: [] };
-    this._scopeId = null;
-    this._transitioned = new WeakSet();
+    this._scopeId = null; this._transitioned = new WeakSet();
+    const { nodes, defs, meta } = this._parseTemplate(template);
+    this._applyDefs(defs, meta, false);
+    this.recompute();
+    this.build(nodes, this.container, {});
+    setTimeout(() => this._runHooks('mount'), 0);
+  }
 
-    const lines = template.split('\n').filter(l => l.trim() && !l.trim().startsWith('//'));
-    const parsed = this.parse(lines, 0);
+  _parseTemplate(t) {
+    const lines = t.split('\n').filter(l => l.trim() && !l.trim().startsWith('//'));
+    return this.parse(lines, 0);
+  }
 
-    for (const [k, v] of Object.entries(parsed.defs)) {
-      if (v._type === 'state') this.state[k] = v._val;
+  _applyDefs(defs, meta, preserve) {
+    for (const [k, v] of Object.entries(defs)) {
+      if (v._type === 'state') this.state[k] = preserve && this.state[k] !== undefined ? this.state[k] : v._val;
       else if (v._type === 'computed') this.computedDefs[k] = v._expr;
       else if (v._type === 'fn') this.fns[k] = v._code;
     }
-    for (const [k, code] of Object.entries(parsed.meta.watchers)) this.watchers[k] = code;
-    for (const h of parsed.meta.hooks) this.hooks[h.phase].push(h.code);
-
-    if (parsed.meta.style) {
+    if (!preserve) {
+      for (const [k, c] of Object.entries(meta.watchers)) this.watchers[k] = c;
+      for (const h of meta.hooks) this.hooks[h.phase].push(h.code);
+    }
+    if (meta.style && !this._scopeId) {
       this._scopeId = 'j' + Math.random().toString(36).slice(2, 6);
       this.container.setAttribute('data-jsa-' + this._scopeId, '');
-      this._injectStyles(parsed.meta.style);
+      this._injectStyles(meta.style);
     }
-
-    this.recompute();
-    this.build(parsed.nodes, this.container, {});
-    setTimeout(() => this._runHooks('mount'), 0);
   }
 
   setState(key, val) {
@@ -68,118 +69,73 @@ export class JSA {
   getState(key) { return this.state[key]; }
 
   destroy() {
-    this._runHooks('destroy');
-    this._removeStyles();
+    this._runHooks('destroy'); this._removeStyles();
     if (this.container) this.container.innerHTML = '';
   }
 
   recompute() {
-    for (const [k, expr] of Object.entries(this.computedDefs)) {
-      try { this.state[k] = new Function('state', `with(state){return ${expr}}`)(this.state); } catch (e) {}
+    for (const [k, e] of Object.entries(this.computedDefs)) {
+      try { this.state[k] = new Function('s', 'getState', 'setState', `with(s){return ${e}}`)(this.state, k => this.state[k], (k, v) => this.setState(k, v)); } catch (_) {}
     }
   }
 
   update() { this._rebuild(); }
 
   _scheduleUpdate() {
-    if (!this._updatePending) {
-      this._updatePending = true;
-      queueMicrotask(() => {
-        this._updatePending = false;
-        const oldState = this._preUpdateState || {};
-        this._preUpdateState = null;
-        this.recompute();
-        this._rebuild();
-        for (const [key, code] of Object.entries(this.watchers)) {
-          if (JSON.stringify(this.state[key]) !== JSON.stringify(oldState[key])) {
-            this.execHandler(code, null, this.container, {});
-          }
-        }
-      });
-    }
+    if (this._updatePending) return;
+    this._updatePending = true;
+    queueMicrotask(() => {
+      this._updatePending = false;
+      const old = this._preUpdateState || {};
+      this._preUpdateState = null;
+      this.recompute(); this._rebuild();
+      for (const [k, code] of Object.entries(this.watchers)) {
+        if (JSON.stringify(this.state[k]) !== JSON.stringify(old[k]))
+          this.execHandler(code, null, this.container, {});
+      }
+    });
   }
 
   _rebuild() {
     if (!this.template) return;
-    const oldState = { ...this.state };
-
-    const lines = this.template.split('\n').filter(l => l.trim() && !l.trim().startsWith('//'));
-    const parsed = this.parse(lines, 0);
-
-    for (const [k, v] of Object.entries(parsed.defs)) {
-      if (v._type === 'state') this.state[k] = oldState[k] !== undefined ? oldState[k] : v._val;
+    const { nodes, defs, meta } = this._parseTemplate(this.template);
+    for (const [k, v] of Object.entries(defs)) {
+      if (v._type === 'state') this.state[k] = this.state[k] !== undefined ? this.state[k] : v._val;
       else if (v._type === 'computed') this.computedDefs[k] = v._expr;
       else if (v._type === 'fn') this.fns[k] = v._code;
     }
-
     this.recompute();
-
-    const offscreen = document.createElement('div');
-    if (this._scopeId) offscreen.setAttribute('data-jsa-' + this._scopeId, '');
-
+    const off = document.createElement('div');
+    if (this._scopeId) off.setAttribute('data-jsa-' + this._scopeId, '');
     this.refs = {};
-    this.build(parsed.nodes, offscreen, {});
-
-    this._patch(this.container, offscreen);
+    this.build(nodes, off, {});
+    this._patch(this.container, off);
   }
 
-  _patch(oldParent, newParent) {
-    const oldChildren = Array.from(oldParent.childNodes);
-    const newChildren = Array.from(newParent.childNodes);
-    const max = Math.max(oldChildren.length, newChildren.length);
-    
-    for (let i = 0; i < max; i++) {
-      const o = oldChildren[i];
-      const n = newChildren[i];
-      
-      if (!o) {
-        oldParent.appendChild(n);
-        this._triggerTransition(n);
-      } else if (!n) {
-        oldParent.removeChild(o);
-      } else if (o.nodeType === Node.TEXT_NODE && n.nodeType === Node.TEXT_NODE) {
-        if (o.textContent !== n.textContent) o.textContent = n.textContent;
-      } else if (o.nodeType !== n.nodeType || o.nodeName !== n.nodeName) {
-        oldParent.replaceChild(n, o);
-        this._triggerTransition(n);
+  _patch(o, n) {
+    const oc = Array.from(o.childNodes), nc = Array.from(n.childNodes);
+    for (let i = 0; i < Math.max(oc.length, nc.length); i++) {
+      const a = oc[i], b = nc[i];
+      if (!a) { o.appendChild(b); this._triggerTransition(b); }
+      else if (!b) { o.removeChild(a); }
+      else if (a.nodeType === Node.TEXT_NODE && b.nodeType === Node.TEXT_NODE) {
+        if (a.textContent !== b.textContent) a.textContent = b.textContent;
+      } else if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) {
+        o.replaceChild(b, a); this._triggerTransition(b);
       } else {
-        if (o.id !== n.id) o.id = n.id;
-        
-        // Use setAttribute for classes to avoid className read-only errors (SVG/SES)
-        const nCls = n.getAttribute('class');
-        if (o.getAttribute('class') !== nCls) {
-          if (nCls !== null) o.setAttribute('class', nCls);
-          else o.removeAttribute('class');
+        if (a.id !== b.id) a.id = b.id;
+        const bc = b.getAttribute('class');
+        if (a.getAttribute('class') !== bc) bc !== null ? a.setAttribute('class', bc) : a.removeAttribute('class');
+        if (a.attributes && b.attributes) {
+          for (let j = a.attributes.length - 1; j >= 0; j--) { const nm = a.attributes[j].name; if (nm !== 'class' && !b.hasAttribute(nm)) a.removeAttribute(nm); }
+          for (let j = 0; j < b.attributes.length; j++) { const { name: nm, value: v } = b.attributes[j]; if (nm !== 'class' && a.getAttribute(nm) !== v) a.setAttribute(nm, v); }
         }
-        
-        const oAttrs = o.attributes;
-        const nAttrs = n.attributes;
-        if (oAttrs && nAttrs) {
-            for (let j = oAttrs.length - 1; j >= 0; j--) {
-              const name = oAttrs[j].name;
-              if (name === 'class') continue;
-              if (!n.hasAttribute(name)) o.removeAttribute(name);
-            }
-            for (let j = 0; j < nAttrs.length; j++) {
-              const name = nAttrs[j].name;
-              if (name === 'class') continue;
-              const value = nAttrs[j].value;
-              if (o.getAttribute(name) !== value) o.setAttribute(name, value);
-            }
-        }
-        
-        if (o.style.cssText !== n.style.cssText) o.style.cssText = n.style.cssText;
-        if ('value' in o && o.value !== n.value) o.value = n.value;
-        if ('checked' in o && o.checked !== n.checked) o.checked = n.checked;
-        
-        o._jsaCtx = n._jsaCtx;
-        o._jsaNode = n._jsaNode;
-        
-        for (const [key, refEl] of Object.entries(this.refs)) {
-          if (refEl === n) this.refs[key] = o;
-        }
-        
-        this._patch(o, n);
+        if (a.style?.cssText !== b.style?.cssText) a.style.cssText = b.style?.cssText || '';
+        if ('value' in a && a.value !== b.value) a.value = b.value;
+        if ('checked' in a && a.checked !== b.checked) a.checked = b.checked;
+        a._jsaCtx = b._jsaCtx; a._jsaNode = b._jsaNode;
+        for (const [k, r] of Object.entries(this.refs)) if (r === b) this.refs[k] = a;
+        this._patch(a, b);
       }
     }
   }
@@ -187,37 +143,19 @@ export class JSA {
   _triggerTransition(el) {
     if (el.nodeType !== Node.ELEMENT_NODE) return;
     const n = el._jsaNode;
-    if (n && n.transition && !this._transitioned.has(el)) {
-      const name = n.transition;
-      this._transitioned.add(el);
-      el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          el.classList.remove(`${name}-enter-from`);
-          el.classList.add(`${name}-enter-to`);
-          const done = () => {
-            el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
-            el.removeEventListener('transitionend', done);
-          };
-          el.addEventListener('transitionend', done);
-          setTimeout(done, 1000);
-        });
-      });
-    }
+    if (!n?.transition || this._transitioned.has(el)) return;
+    const nm = n.transition;
+    this._transitioned.add(el);
+    el.classList.add(`${nm}-enter-from`, `${nm}-enter-active`);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.classList.remove(`${nm}-enter-from`); el.classList.add(`${nm}-enter-to`);
+      const done = () => { el.classList.remove(`${nm}-enter-active`, `${nm}-enter-to`); el.removeEventListener('transitionend', done); };
+      el.addEventListener('transitionend', done); setTimeout(done, 1000);
+    }));
   }
 
-  _runHooks(phase) {
-    for (const code of this.hooks[phase] || []) {
-      this.execHandler(code, null, this.container, {});
-    }
-  }
-
-  _injectStyles(css) {
-    this._styleEl = document.createElement('style');
-    this._styleEl.textContent = this._scopeCSS(css);
-    document.head.appendChild(this._styleEl);
-  }
-
+  _runHooks(phase) { for (const c of this.hooks[phase] || []) this.execHandler(c, null, this.container, {}); }
+  _injectStyles(css) { this._styleEl = document.createElement('style'); this._styleEl.textContent = this._scopeCSS(css); document.head.appendChild(this._styleEl); }
   _removeStyles() {
     if (this._styleEl) { this._styleEl.remove(); this._styleEl = null; }
     if (this._scopeId && this.container) this.container.removeAttribute('data-jsa-' + this._scopeId);
@@ -234,56 +172,38 @@ export class JSA {
   }
 
   parse(lines, startIndent) {
-    const nodes = [], defs = {};
-    const meta = { watchers: {}, hooks: [], style: '' };
-    let i = 0;
-
+    const nodes = [], defs = {}, meta = { watchers: {}, hooks: [], style: '' };
+    let i = 0, m;
     while (i < lines.length) {
       const line = lines[i], indent = line.search(/\S/);
       if (indent < startIndent) break;
-
       if (indent === startIndent) {
         const t = line.trim();
-
-        if (t.startsWith('let ')) {
-          const m = t.match(/let\s+(\w+)\s*=\s*(.+)/);
-          if (m) { defs[m[1]] = { _type: 'state', _val: this.parseValue(m[2]) }; i++; continue; }
-        }
-
+        if (t.startsWith('let ') && (m = t.match(/let\s+(\w+)\s*=\s*(.+)/)))
+          { defs[m[1]] = { _type: 'state', _val: this.parseValue(m[2]) }; i++; continue; }
         if (t.startsWith('const ') && t.includes('computed')) {
-          const m = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*(.+)\s*\)/);
-          if (m) { defs[m[1]] = { _type: 'computed', _expr: m[2] }; i++; continue; }
-        }
-
-        if (t.startsWith('fn ')) {
-          const m = t.match(/fn\s+(\w+)\s*=\s*"([^"]+)"/);
-          if (m) { defs[m[1]] = { _type: 'fn', _code: m[2] }; i++; continue; }
-        }
-
-        if (t.startsWith('watch ')) {
-          const m = t.match(/watch\s+(\w+)\s*=\s*"([^"]+)"/);
-          if (m) { meta.watchers[m[1]] = m[2]; i++; continue; }
-        }
-
-        if (t.startsWith('on ')) {
-          const m = t.match(/on\s+(mount|destroy)\s*=\s*"([^"]+)"/);
-          if (m) { meta.hooks.push({ phase: m[1], code: m[2] }); i++; continue; }
-        }
-
-        if (t === 'style' || t.startsWith('style ')) {
-          if (t === 'style') {
-            let css = '', j = i + 1;
-            while (j < lines.length && lines[j].search(/\S/) > indent) {
-              css += lines[j].trim() + ' ';
-              j++;
+          if ((m = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*(.+)\s*\)/)))
+            { defs[m[1]] = { _type: 'computed', _expr: m[2] }; i++; continue; }
+          if ((m = t.match(/const\s+(\w+)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*\{/))) {
+            let expr = '', j = i + 1, depth = 1;
+            while (j < lines.length && depth > 0) {
+              const l = lines[j];
+              if (l.includes('{')) depth++; if (l.includes('}')) depth--;
+              expr += (depth > 0 ? l.trim() : l.split('}')[0].trim()) + ' '; j++;
             }
-            meta.style += css.trim();
-            i = j; continue;
+            defs[m[1]] = { _type: 'computed', _expr: `(() => { ${expr.trim()} })()` }; i = j; continue;
           }
-          const m = t.match(/style\s*=\s*"(.+)"/);
-          if (m) { meta.style += m[1]; i++; continue; }
         }
-
+        if (t.startsWith('fn ') && (m = t.match(/fn\s+(\w+)\s*=\s*"([^"]+)"/)))
+          { defs[m[1]] = { _type: 'fn', _code: m[2] }; i++; continue; }
+        if (t.startsWith('watch ') && (m = t.match(/watch\s+(\w+)\s*=\s*"([^"]+)"/)))
+          { meta.watchers[m[1]] = m[2]; i++; continue; }
+        if (t.startsWith('on ') && (m = t.match(/on\s+(mount|destroy)\s*=\s*"([^"]+)"/)))
+          { meta.hooks.push({ phase: m[1], code: m[2] }); i++; continue; }
+        if (t === 'style' || t.startsWith('style ')) {
+          if (t === 'style') { let css = '', j = i + 1; while (j < lines.length && lines[j].search(/\S/) > indent) { css += lines[j].trim() + ' '; j++; } meta.style += css.trim(); i = j; continue; }
+          if ((m = t.match(/style\s*=\s*"(.+)"/))) { meta.style += m[1]; i++; continue; }
+        }
         const node = this.parseElement(t);
         if (node) {
           nodes.push(node);
@@ -294,8 +214,7 @@ export class JSA {
               node.children = ch.nodes;
               let c = 0, j = i + 1;
               while (j < lines.length && lines[j].search(/\S/) > indent) { c++; j++; }
-              i += c + 1;
-              continue;
+              i += c + 1; continue;
             }
           }
         }
@@ -305,252 +224,161 @@ export class JSA {
     return { nodes, defs, meta };
   }
 
+  // Unwrap ${...} expression shorthand
+  _expr(v) { return v.match(/^\$\{(.+)\}$/)?.[1] || v; }
+
   parseElement(t) {
     const n = { type: 'element', tag: 'div', id: null, classes: [], styles: {}, events: {}, attrs: {}, content: null, children: [], ref: null, each: null, if: null, show: null, bind: null, html: null, transition: null };
-    let r = t;
-
-    const rm = r.match(/^\$([a-zA-Z0-9_-]+)/);
-    if (rm) { n.ref = rm[1]; r = r.slice(rm[0].length).trim(); }
-
-    const tm = r.match(/^([a-z][a-z0-9]*)?(?:#([a-zA-Z0-9_-]+))?(?:\.([a-zA-Z0-9_.-]+))?/);
-    if (tm) {
-      if (tm[1]) n.tag = tm[1];
-      if (tm[2]) n.id = tm[2];
-      if (tm[3]) n.classes = tm[3].split('.');
-      r = r.slice(tm[0].length).trim();
+    let r = t, m;
+    if ((m = r.match(/^\$([a-zA-Z0-9_-]+)/))) { n.ref = m[1]; r = r.slice(m[0].length).trim(); }
+    if ((m = r.match(/^([a-z][a-z0-9]*)?(?:#([a-zA-Z0-9_-]+))?(?:\.([a-zA-Z0-9_.:-]+))?/))) {
+      if (m[1]) n.tag = m[1]; if (m[2]) n.id = m[2]; if (m[3]) n.classes = m[3].split('.');
+      r = r.slice(m[0].length).trim();
     }
-
-    const sm = r.match(/^\{([^}]+)\}/);
-    if (sm) {
-      sm[1].split(';').forEach(p => {
-        const parts = p.split(':');
-        const k = parts[0].trim();
-        const v = parts.slice(1).join(':').trim();
-        if (k && v) n.styles[k.replace(/-([a-z])/g, (m, c) => c.toUpperCase())] = v;
-      });
-      r = r.slice(sm[0].length).trim();
+    if ((m = r.match(/^\{([^}]+)\}/))) {
+      m[1].split(';').forEach(p => { const ci = p.indexOf(':'); if (ci < 0) return; const k = p.slice(0, ci).trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase()), v = p.slice(ci + 1).trim(); if (k && v) n.styles[k] = v; });
+      r = r.slice(m[0].length).trim();
     }
-
-    const ifM = r.match(/\bif\s*=\s*"\$\{([^}]+)\}"/);
-    if (ifM) { n.if = ifM[1]; r = r.replace(ifM[0], '').trim(); }
-
-    const showM = r.match(/\bshow\s*=\s*"\$\{([^}]+)\}"/);
-    if (showM) { n.show = showM[1]; r = r.replace(showM[0], '').trim(); }
-
-    const eachM = r.match(/\beach\s*=\s*"\$\{([^}]+)\}"/);
-    if (eachM) { n.each = eachM[1]; r = r.replace(eachM[0], '').trim(); }
-
-    const transM = r.match(/\btransition\s*=\s*"(\w[\w-]*)"/);
-    if (transM) { n.transition = transM[1]; r = r.replace(transM[0], '').trim(); }
-
-    const bindM = r.match(/\bbind\s*=\s*"(\w+)"/);
-    if (bindM) { n.bind = bindM[1]; r = r.replace(bindM[0], '').trim(); }
-
-    const htmlM = r.match(/\bhtml\s*=\s*"([^"]*)"/);
-    if (htmlM) { n.html = this.decodeUnicode(htmlM[1]); r = r.replace(htmlM[0], '').trim(); }
-
-    const attrRe = /:([a-zA-Z][\w-]*)\s*=\s*"([^"]+)"/g;
-    let am;
-    while ((am = attrRe.exec(r)) !== null) n.attrs[am[1]] = this.decodeUnicode(am[2]);
-    r = r.replace(/:[a-zA-Z][\w-]*\s*=\s*"[^"]+"/g, '').trim();
-
-    const er = /@(\w+(?:\.\w+)*)\s*=\s*"([^"]+)"/g;
-    let em;
-    while ((em = er.exec(r)) !== null) n.events[em[1]] = em[2];
-    r = r.replace(/@\w+(?:\.\w+)*\s*=\s*"[^"]+"/g, '').trim();
-
-    const cm = r.match(/^=\s*"([^"]*)"/);
-    if (cm) n.content = this.decodeUnicode(cm[1]);
-
+    const atRe = /(?:^|\s+)([:a-zA-Z][\w-:]*)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
+    atRe.lastIndex = 0;
+    while ((m = atRe.exec(r)) !== null) {
+      const [, key, val] = m;
+      if (key === 'if') n.if = this._expr(val);
+      else if (key === 'show') n.show = this._expr(val);
+      else if (key === 'each') n.each = this._expr(val);
+      else if (key === 'transition') n.transition = val;
+      else if (key === 'bind') n.bind = val;
+      else if (key === 'html') n.html = this.parseValue('"' + val + '"');
+      else if (key.startsWith(':')) n.attrs[key.slice(1)] = val;
+      else n.attrs[key] = this.parseValue('"' + val + '"');
+    }
+    r = r.replace(/(?:^|\s+)([:a-zA-Z][\w-:]*)\s*=\s*"((?:[^"\\]|\\.)*)"/g, '').trim();
+    const evRe = /(?:^|\s+)@(\w+(?:\.\w+)*)\s*=\s*"((?:[^"\\]|\\.)*)"/g;
+    evRe.lastIndex = 0;
+    while ((m = evRe.exec(r)) !== null) n.events[m[1]] = this._expr(m[2]);
+    r = r.replace(/(?:^|\s+)@\w+(?:\.\w+)*\s*=\s*"((?:[^"\\]|\\.)*)"/g, '').trim();
+    if ((m = r.match(/=\s*"((?:[^"\\]|\\.)*)"/))) {
+      n.content = this.parseValue('"' + m[1] + '"'); r = r.replace(m[0], '').trim();
+    } else if (r.length > 0 && !r.includes('@') && !r.includes('=')) n.content = r;
     return n;
   }
 
   parseValue(v) {
     v = v.trim();
     if (v.startsWith('"') || v.startsWith("'")) {
-      let raw = v.slice(1, -1);
-      // Decode Unicode escape sequences (\uXXXX)
-      raw = raw.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
-      // Decode other escape sequences
-      raw = raw.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
-      return raw;
+      return v.slice(1, -1)
+        .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+        .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t')
+        .replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\$/g, '$').replace(/\\\\/g, '\\');
     }
-    if (v === 'true') return true;
-    if (v === 'false') return false;
-    if (v === 'null') return null;
+    if (v === 'true') return true; if (v === 'false') return false; if (v === 'null') return null;
     if (!isNaN(v) && v !== '') return Number(v);
-    try { return JSON.parse(v); } catch (e) {}
-    try { return new Function(`return ${v}`)(); } catch (e) {}
+    try { return JSON.parse(v); } catch (_) {}
+    try { return new Function(`return ${v}`)(); } catch (_) {}
     return v;
   }
 
-  build(nodes, parent, ctx) {
-    nodes.forEach(n => this.buildNode(n, parent, ctx));
-  }
+  build(nodes, parent, ctx) { nodes.forEach(n => this.buildNode(n, parent, ctx)); }
 
   buildNode(n, parent, ctx) {
     if (!n) return;
     if (n.if !== null && !this.evaluate(n.if, ctx)) return;
-
     if (n.each) {
       const arr = this.evaluate(n.each, ctx);
-      if (Array.isArray(arr)) {
-        arr.forEach((item, idx) => this.buildInstance(n, parent, { ...ctx, item, idx }));
-      }
+      if (Array.isArray(arr) && arr.length > 0) arr.forEach((item, idx) => this.buildInstance(n, parent, { ...ctx, item, idx }));
       return;
     }
     this.buildInstance(n, parent, ctx);
   }
 
-  buildInstance(n, parent, ctx) {
-    const el = document.createElement(n.tag);
-    el._jsaCtx = ctx;
-    el._jsaNode = n;
-    if (n.id) el.id = n.id;
-    n.classes.forEach(c => el.classList.add(c));
-    Object.assign(el.style, n.styles);
-    if (this._scopeId) el.setAttribute('data-jsa-' + this._scopeId, '');
-
-    if (n.attrs.class) {
-      const resolved = this._resolveAttr(n.attrs.class, ctx);
-      if (resolved) {
-        String(resolved).split(/\s+/).forEach(c => {
-          if (c && c !== 'undefined' && c !== 'null' && c !== 'false') el.classList.add(c);
-        });
-      }
-    }
-
-    if (n.attrs.style) {
-      const resolved = this._resolveAttr(n.attrs.style, ctx);
-      if (resolved) {
-        String(resolved).split(';').forEach(pair => {
-          const ci = pair.indexOf(':');
-          if (ci === -1) return;
-          const k = pair.slice(0, ci).trim();
-          const v = pair.slice(ci + 1).trim();
-          if (k && v) el.style[k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v;
-        });
-      }
-    }
-
-    if (n.show !== null && !this.evaluate(n.show, ctx)) el.style.display = 'none';
-    if (n.ref) this.refs[n.ref] = el;
-
-    const boolAttrs = new Set(['disabled', 'checked', 'hidden', 'readonly', 'required', 'selected', 'multiple', 'autofocus']);
-    for (const [attr, val] of Object.entries(n.attrs)) {
-      if (attr === 'class' || attr === 'style') continue;
-      const resolved = this._resolveAttr(val, ctx);
-      if (boolAttrs.has(attr)) {
-        if (resolved) el.setAttribute(attr, '');
-      } else if (resolved !== null && resolved !== undefined && resolved !== false) {
-        el.setAttribute(attr, String(resolved));
-      }
-    }
-
-    if (n.bind) {
-      const key = n.bind;
-      const isCheck = el.type === 'checkbox' || el.type === 'radio';
-      if (isCheck) el.checked = !!this.state[key];
-      else el.value = this.state[key] ?? '';
-      el.dataset.jsaBind = key;
-      el.addEventListener(isCheck || n.tag === 'select' ? 'change' : 'input', () => {
-        this.setState(key, isCheck ? el.checked : el.value);
-      });
-    }
-
-    if (n.html !== null) el.innerHTML = this.interpolate(n.html, ctx);
-    else if (n.content !== null) el.textContent = this.interpolate(n.content, ctx);
-
-    const keyMap = { enter: 'Enter', esc: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
-    for (const [evName, h] of Object.entries(n.events)) {
-      const loopCtx = { ...ctx };
-      const parts = evName.split('.');
-      const ev = parts[0], mods = new Set(parts.slice(1));
-      el.addEventListener(ev, (e) => {
-        if (mods.has('prevent')) e.preventDefault();
-        if (mods.has('stop')) e.stopPropagation();
-        if (mods.has('self') && e.target !== el) return;
-        for (const [m, key] of Object.entries(keyMap)) {
-          if (mods.has(m) && e.key !== key) return;
-        }
-        this.execHandler(h, e, el, el._jsaCtx || loopCtx);
-      }, { once: mods.has('once') });
-    }
-
-    if (n.children) this.build(n.children, el, ctx);
-    parent.appendChild(el);
-  }
-
   evaluate(expr, ctx) {
-    try {
-      const scope = { ...this.state, ...ctx };
-      return new Function('scope', `with(scope){return ${expr}}`)(scope);
-    } catch (e) { return undefined; }
+    try { return new Function('scope', `with(scope){return ${expr}}`)({ ...this.state, ...ctx }); } catch (_) { return undefined; }
   }
 
   _resolveAttr(val, ctx) {
     const m = val.match(/^\$\{(.+)\}$/);
-    if (m) return this.evaluate(m[1], ctx);
-    return this.interpolate(val, ctx);
+    return m ? this.evaluate(m[1], ctx) : this.interpolate(val, ctx);
+  }
+
+  buildInstance(n, parent, ctx) {
+    const el = document.createElement(n.tag);
+    el._jsaCtx = ctx; el._jsaNode = n;
+    if (n.id) el.id = n.id;
+    n.classes.forEach(c => el.classList.add(c));
+    Object.assign(el.style, n.styles);
+    if (this._scopeId) el.setAttribute('data-jsa-' + this._scopeId, '');
+    if (n.attrs.class) {
+      const r = this._resolveAttr(n.attrs.class, ctx);
+      if (r) String(r).split(/\s+/).forEach(c => { if (c && c !== 'undefined' && c !== 'null' && c !== 'false') el.classList.add(c); });
+    }
+    if (n.attrs.style) {
+      const r = this._resolveAttr(n.attrs.style, ctx);
+      if (r) String(r).split(';').forEach(p => { const ci = p.indexOf(':'); if (ci < 0) return; el.style[p.slice(0,ci).trim().replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] = p.slice(ci+1).trim(); });
+    }
+    if (n.show !== null && !this.evaluate(n.show, ctx)) el.style.display = 'none';
+    if (n.ref) this.refs[n.ref] = el;
+    const BOOL = new Set(['disabled','checked','hidden','readonly','required','selected','multiple','autofocus']);
+    for (const [attr, val] of Object.entries(n.attrs)) {
+      if (attr === 'class' || attr === 'style') continue;
+      const r = this._resolveAttr(val, ctx);
+      if (BOOL.has(attr)) { if (r) el.setAttribute(attr, ''); }
+      else if (r !== null && r !== undefined && r !== false) el.setAttribute(attr, String(r));
+    }
+    if (n.bind) {
+      const key = n.bind, isC = el.type === 'checkbox' || el.type === 'radio';
+      isC ? el.checked = !!this.state[key] : el.value = this.state[key] ?? '';
+      el.dataset.jsaBind = key;
+      el.addEventListener(isC || n.tag === 'select' ? 'change' : 'input', () => this.setState(key, isC ? el.checked : el.value));
+    }
+    if (n.html !== null) el.innerHTML = this.interpolate(n.html, ctx);
+    else if (n.content !== null) el.textContent = this.interpolate(n.content, ctx);
+    const KEYS = { enter:'Enter', esc:'Escape', tab:'Tab', space:' ', delete:'Delete', up:'ArrowUp', down:'ArrowDown', left:'ArrowLeft', right:'ArrowRight' };
+    for (const [evName, h] of Object.entries(n.events)) {
+      const lCtx = { ...ctx }, pts = evName.split('.'), ev = pts[0], mods = new Set(pts.slice(1));
+      el.addEventListener(ev, e => {
+        if (mods.has('prevent')) e.preventDefault();
+        if (mods.has('stop')) e.stopPropagation();
+        if (mods.has('self') && e.target !== el) return;
+        for (const [mk, key] of Object.entries(KEYS)) if (mods.has(mk) && e.key !== key) return;
+        this.execHandler(h, e, el, el._jsaCtx || lCtx);
+      }, { once: mods.has('once') });
+    }
+    if (n.children) this.build(n.children, el, ctx);
+    parent.appendChild(el);
   }
 
   decodeUnicode(s) {
-    return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-            .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+    return s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
   }
 
   interpolate(s, ctx) {
     return s.replace(/\$\{([^}]+)\}/g, (_, expr) => {
       try {
         const scope = { ...this.state, ...ctx };
-        for (const [k, e] of Object.entries(this.computedDefs)) {
-          try { scope[k] = new Function('s', `with(s){return ${e}}`)(scope); } catch (ex) {}
-        }
-        const result = new Function('scope', `with(scope){return ${expr}}`)(scope);
-        const str = result !== undefined && result !== null ? String(result) : '';
-        return this.decodeUnicode(str);
-      } catch (e) { return ''; }
+        for (const [k, e] of Object.entries(this.computedDefs)) { try { scope[k] = new Function('s', `with(s){return ${e}}`)(scope); } catch (_) {} }
+        const r = new Function('s', `with(s){return ${expr}}`)(scope);
+        return r !== undefined && r !== null ? this.decodeUnicode(String(r)) : '';
+      } catch (_) { return ''; }
     });
   }
 
   execHandler(code, e, el, ctx) {
     try {
-      const fnDefs = Object.entries(this.fns).map(([name, body]) =>
-        `function ${name}() { ${body} }`
-      ).join('\n');
-      const fn = new Function('state', 'refs', 'el', 'e', 'setState', 'getState', 'update', 'item', 'idx', `
-        ${fnDefs}
-        with(state) { (function() { ${code} })(); }
-      `);
-      fn(
-        this.state, this.refs, el, e,
-        (k, v) => this.setState(k, v),
-        (k) => this.state[k],
-        () => this.update(),
-        ctx?.item, ctx?.idx
-      );
-    } catch (err) {
-      console.error('JSA handler error:', err);
-    }
+      const fns = Object.entries(this.fns).map(([nm, b]) => `function ${nm}() { ${b} }`).join('\n');
+      new Function('state','refs','el','e','setState','getState','update','item','idx',
+        `${fns}\nwith(state){(function(){${code}})();}`)
+        (this.state, this.refs, el, e, (k,v) => this.setState(k,v), k => this.state[k], () => this.update(), ctx?.item, ctx?.idx);
+    } catch (err) { console.error(`JSA E001: handler — ${err.message}`, { code }); }
   }
 }
 
-export function mount(container, template) {
-  const app = new JSA(container);
-  app.render(template);
-  return app;
-}
+export function mount(container, template) { const a = new JSA(container); a.render(template); return a; }
 
 export async function load(url, container) {
-  if (container && container.tagName === 'BUTTON') container = '#app';
+  if (container?.tagName === 'BUTTON') container = '#app';
   const el = typeof container === 'string' ? document.querySelector(container) : container;
   if (!el) return;
-  try {
-    const template = await fetch(url).then(r => r.text());
-    const app = new JSA(el);
-    app.render(template);
-    return app;
-  } catch (err) {
-    console.error('JSA: Failed to load', url, err);
-  }
+  try { const t = await fetch(url).then(r => r.text()); const a = new JSA(el); a.render(t); return a; }
+  catch (err) { console.error('JSA: Failed to load', url, err); }
 }
