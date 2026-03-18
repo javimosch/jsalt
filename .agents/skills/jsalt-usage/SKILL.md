@@ -1,5 +1,5 @@
 ---
-skill_name: "pplx_ask_send"
+skill_name: "learn_jsalt"
 description: "Teach AI agents to build web apps with JSALT framework"
 ---
 
