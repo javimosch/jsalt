@@ -21,7 +21,8 @@
     "demo": "cd examples && npx serve .",
     "ast": "node bin/jsa-ast.js",
     "validate": "node bin/jsa-ast.js examples/*.jsa",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js",
+    "test:coverage": "node --test --experimental-test-coverage tests/*.test.js"
   },
   "keywords": [
     "jsa",
