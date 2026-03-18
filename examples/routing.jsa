@@ -1,0 +1,56 @@
+// Routing SPA - JSALT Example
+// Demonstrates hash routing with 3 routes and a contact form
+
+let route = '#/'
+let form = { name: '', email: '', msg: '', sent: false }
+
+style
+  .nav { display: flex; gap: 16px; padding: 16px 24px; background: #1e293b; border-bottom: 1px solid #334155 }
+  .nav a { color: #94a3b8; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 14px }
+  .nav a.active { background: #3b82f6; color: white }
+  .page { padding: 40px; max-width: 720px; margin: 0 auto }
+  .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 24px; margin-top: 24px }
+  h1 { color: #f1f5f9; margin: 0 0 12px }
+  p { color: #94a3b8; line-height: 1.6 }
+  label { display: block; margin-bottom: 4px; color: #94a3b8; font-size: 13px }
+  input, textarea { width: 100%; padding: 10px 14px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #f1f5f9; font-size: 14px; box-sizing: border-box; margin-bottom: 16px }
+  button { background: #3b82f6; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-size: 14px }
+  .success { color: #22c55e; margin-top: 12px }
+
+div { background: #0f172a; min-height: 100vh; font-family: sans-serif; color: #f1f5f9 }
+  nav.nav
+    a :class="${route === '#/' ? 'active' : ''}" href="#/" = "Home"
+    a :class="${route === '#/about' ? 'active' : ''}" href="#/about" = "About"
+    a :class="${route === '#/contact' ? 'active' : ''}" href="#/contact" = "Contact"
+
+  // Home route
+  div.page if="${route === '#/'}"
+    h1 = "Welcome to JSALT Routing"
+    p = "This example demonstrates built-in hash routing. Click the links above to navigate between pages. No page reloads — pure reactive state."
+    div.card
+      h1 = "How routing works"
+      p = "Declare a 'route' variable and use the 'if' directive to show or hide sections. JSALT watches the URL hash automatically."
+
+  // About route
+  div.page if="${route === '#/about'}"
+    h1 = "About JSALT"
+    p = "JSALT is a minimal, AI-first reactive framework. Single-file components, zero build step, hash routing built-in."
+    div.card
+      h1 = "Design Goals"
+      p = "Optimised for AI code generation: short syntax, predictable patterns, correct-by-default behaviour."
+
+  // Contact route
+  div.page if="${route === '#/contact'}"
+    h1 = "Contact"
+    p = "Use the 'bind' directive for two-way form binding."
+    div.card show="${!form.sent}"
+      label = "Name"
+      input type="text" bind="form.name" placeholder="Your name"
+      label = "Email"
+      input type="email" bind="form.email" placeholder="your@email.com"
+      label = "Message"
+      textarea bind="form.msg" placeholder="Write something..."
+      button @click="setState('form', { ...form, sent: true })" = "Send Message"
+    div show="${form.sent}"
+      p.success = "Thanks ${form.name}! Message sent."
+      button @click="setState('form', { name: '', email: '', msg: '', sent: false })" = "Send Another"
